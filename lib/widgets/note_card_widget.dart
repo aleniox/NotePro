@@ -359,6 +359,80 @@ class _NoteCardWidgetState extends State<NoteCardWidget> {
 
                 const SizedBox(height: 8),
 
+                // Deadline Badge if set
+                if (widget.note.reminderDateTime != null) ...[
+                  Builder(
+                    builder: (context) {
+                      final deadline = widget.note.reminderDateTime!;
+                      final now = DateTime.now();
+                      final isOverdue = deadline.isBefore(now) && !widget.note.isCompleted;
+                      final isDone = widget.note.isCompleted;
+
+                      Color badgeBg;
+                      Color badgeBorder;
+                      Color badgeText;
+                      IconData badgeIcon;
+
+                      if (isDone) {
+                        badgeBg = Colors.green.withOpacity(0.12);
+                        badgeBorder = Colors.green.withOpacity(0.4);
+                        badgeText = Colors.green.shade700;
+                        badgeIcon = Icons.check_circle_rounded;
+                      } else if (isOverdue) {
+                        badgeBg = Colors.red.withOpacity(0.12);
+                        badgeBorder = Colors.red.withOpacity(0.4);
+                        badgeText = Colors.red.shade700;
+                        badgeIcon = Icons.error_outline_rounded;
+                      } else {
+                        badgeBg = Colors.amber.withOpacity(0.12);
+                        badgeBorder = Colors.amber.withOpacity(0.4);
+                        badgeText = Colors.amber.shade800;
+                        badgeIcon = Icons.alarm_rounded;
+                      }
+
+                      return InkWell(
+                        onTap: () => notesProvider.toggleDeadlineCompleted(widget.note),
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          margin: const EdgeInsets.only(bottom: 8),
+                          decoration: BoxDecoration(
+                            color: badgeBg,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: badgeBorder),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(badgeIcon, size: 14, color: badgeText),
+                              const SizedBox(width: 5),
+                              Text(
+                                isDone
+                                    ? 'Đã xong: ${deadline.day}/${deadline.month}'
+                                    : (isOverdue
+                                        ? 'Quá hạn: ${deadline.hour}:${deadline.minute.toString().padLeft(2, '0')} ${deadline.day}/${deadline.month}'
+                                        : 'Hạn chót: ${deadline.hour}:${deadline.minute.toString().padLeft(2, '0')} ${deadline.day}/${deadline.month}'),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: badgeText,
+                                  decoration: isDone ? TextDecoration.lineThrough : null,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Icon(
+                                isDone ? Icons.undo_rounded : Icons.check_rounded,
+                                size: 12,
+                                color: badgeText,
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+
                 // Content Preview / Locked State
                 if (widget.note.isLocked) ...[
                   Container(

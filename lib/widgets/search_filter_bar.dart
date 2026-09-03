@@ -258,9 +258,29 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
                       isSelected: notesProvider.viewMode == NoteViewMode.kanban,
                       onTap: () => notesProvider.setViewMode(NoteViewMode.kanban),
                     ),
+                    _MiniViewModeButton(
+                      icon: Icons.calendar_month_rounded,
+                      tooltip: 'Xem theo Lịch & Deadline',
+                      isSelected: notesProvider.viewMode == NoteViewMode.calendar,
+                      onTap: () => notesProvider.setViewMode(NoteViewMode.calendar),
+                    ),
                   ],
                 ),
               ),
+
+              // Pet Assistant Toggle & Selector Button
+              if (isDesktop) ...[
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: Icon(
+                    notesProvider.isPetEnabled ? Icons.pets_rounded : Icons.pets_outlined,
+                    color: notesProvider.isPetEnabled ? const Color(0xFF6366F1) : Colors.grey,
+                    size: 20,
+                  ),
+                  tooltip: 'Thú cưng màn hình (Bấm để chọn Cún 🐶 / Mèo 🐱 / Anime 🌸)',
+                  onPressed: () => _showPetSelectionDialog(context, notesProvider),
+                ),
+              ],
 
               // Desktop Quick "+ Ghi chú mới" Button
               if (isDesktop) ...[
@@ -281,6 +301,114 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  void _showPetSelectionDialog(BuildContext context, NotesProvider notesProvider) {
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Row(
+            children: [
+              Text('🐾 ', style: TextStyle(fontSize: 22)),
+              Text('Chọn Thú Cưng Màn Hình'),
+            ],
+          ),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Bật bé Pet trên Desktop', style: TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: const Text('Hiển thị người bạn đồng hành nhắc việc'),
+                  value: notesProvider.isPetEnabled,
+                  onChanged: (val) {
+                    notesProvider.togglePetEnabled(val);
+                    setDialogState(() {});
+                  },
+                ),
+                const Divider(),
+                const Text('Chọn nhân vật yêu thích:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                const SizedBox(height: 6),
+                RadioListTile<String>(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Row(
+                    children: [
+                      Text('🐶 ', style: TextStyle(fontSize: 18)),
+                      Text('Chú Cún Shiba (Puppy)', style: TextStyle(fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                  subtitle: const Text('Năng động, sủa gâu gâu cổ vũ'),
+                  value: 'dog',
+                  groupValue: notesProvider.petType,
+                  onChanged: (val) {
+                    notesProvider.setPetType(val!);
+                    setDialogState(() {});
+                  },
+                ),
+                RadioListTile<String>(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Row(
+                    children: [
+                      Text('🐱 ', style: TextStyle(fontSize: 18)),
+                      Text('Bé Mèo Kawaii (Kitten)', style: TextStyle(fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                  subtitle: const Text('Đáng yêu, khóe miệng :3 nũng nịu'),
+                  value: 'cat',
+                  groupValue: notesProvider.petType,
+                  onChanged: (val) {
+                    notesProvider.setPetType(val!);
+                    setDialogState(() {});
+                  },
+                ),
+                RadioListTile<String>(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Row(
+                    children: [
+                      Text('🌸 ', style: TextStyle(fontSize: 18)),
+                      Text('Cô Bé Anime (Waifu)', style: TextStyle(fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                  subtitle: const Text('Trợ lý ngọt ngào, gọi Senpai'),
+                  value: 'anime',
+                  groupValue: notesProvider.petType,
+                  onChanged: (val) {
+                    notesProvider.setPetType(val!);
+                    setDialogState(() {});
+                  },
+                ),
+                RadioListTile<String>(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Row(
+                    children: [
+                      Text('💀 ', style: TextStyle(fontSize: 18)),
+                      Text('Thần Chết Chibi (Grim Reaper)', style: TextStyle(fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                  subtitle: const Text('Áo choàng đen, vung lưỡi hái đòi deadline'),
+                  value: 'reaper',
+                  groupValue: notesProvider.petType,
+                  onChanged: (val) {
+                    notesProvider.setPetType(val!);
+                    setDialogState(() {});
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Xong'),
+            ),
+          ],
+        ),
       ),
     );
   }

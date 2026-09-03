@@ -226,6 +226,97 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
               const SizedBox(height: 18),
 
+              // Desktop Pet Assistant Settings
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Row(
+                            children: [
+                              Text('🐾 ', style: TextStyle(fontSize: 18)),
+                              Text(
+                                'Thú cưng màn hình (Desktop Pet)',
+                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                          Switch(
+                            value: notesProvider.isPetEnabled,
+                            onChanged: (val) => notesProvider.togglePetEnabled(val),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Hiển thị người bạn đồng hành chạy lon ton trên màn hình máy tính Windows nhắc nhở bạn các công việc và hạn chót sắp đến.',
+                        style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Chọn nhân vật bạn yêu thích:',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 10),
+                      RadioListTile<String>(
+                        title: const Row(
+                          children: [
+                            Text('🐶 ', style: TextStyle(fontSize: 18)),
+                            Text('Chú Cún Shiba (Puppy)', style: TextStyle(fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                        subtitle: const Text('Năng động, trung thành, sủa gâu gâu cổ vũ bạn làm việc'),
+                        value: 'dog',
+                        groupValue: notesProvider.petType,
+                        onChanged: (val) => notesProvider.setPetType(val!),
+                      ),
+                      RadioListTile<String>(
+                        title: const Row(
+                          children: [
+                            Text('🐱 ', style: TextStyle(fontSize: 18)),
+                            Text('Bé Mèo Kawaii (Kitten)', style: TextStyle(fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                        subtitle: const Text('Đáng yêu, khóe miệng :3, nũng nịu meo meo nhắc deadline'),
+                        value: 'cat',
+                        groupValue: notesProvider.petType,
+                        onChanged: (val) => notesProvider.setPetType(val!),
+                      ),
+                      RadioListTile<String>(
+                        title: const Row(
+                          children: [
+                            Text('🌸 ', style: TextStyle(fontSize: 18)),
+                            Text('Cô Bé Anime (Waifu Assistant)', style: TextStyle(fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                        subtitle: const Text('Trợ lý Chibi ngọt ngào, gọi bạn là "Senpai" cực ngọt'),
+                        value: 'anime',
+                        groupValue: notesProvider.petType,
+                        onChanged: (val) => notesProvider.setPetType(val!),
+                      ),
+                      RadioListTile<String>(
+                        title: const Row(
+                          children: [
+                            Text('💀 ', style: TextStyle(fontSize: 18)),
+                            Text('Thần Chết Chibi (Grim Reaper)', style: TextStyle(fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                        subtitle: const Text('Áo choàng bóng đêm, mắt phát sáng, vung lưỡi hái đòi deadline'),
+                        value: 'reaper',
+                        groupValue: notesProvider.petType,
+                        onChanged: (val) => notesProvider.setPetType(val!),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 18),
+
               // Backup & Restore
               Card(
                 child: Padding(
@@ -300,6 +391,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           ),
                         ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Pet Assistant Settings
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.pets_rounded, size: 20, color: Color(0xFF6366F1)),
+                          SizedBox(width: 8),
+                          Text(
+                            '🐾 Bé Pet ảo nhắc việc trên màn hình',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Bé Pet sẽ tự động xuất hiện lon ton chạy qua lại trên màn hình khi bạn có deadline đến hạn. Pet sẽ chỉ biến mất khi bạn hoàn thành việc đó!',
+                        style: TextStyle(fontSize: 13, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 12),
+                      SwitchListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Bật bé Pet nhắc việc', style: TextStyle(fontWeight: FontWeight.w600)),
+                        subtitle: const Text('Tự động tuần tra nhắc nhở các deadline chưa làm'),
+                        value: notesProvider.isPetEnabled,
+                        onChanged: (val) => notesProvider.togglePetEnabled(val),
                       ),
                     ],
                   ),

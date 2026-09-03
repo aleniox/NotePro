@@ -276,11 +276,28 @@ class AdaptiveSidebar extends StatelessWidget {
                 icon: Icons.grid_view_rounded,
                 title: 'Tất cả ghi chú',
                 count: notesProvider.filteredNotes.length,
-                isSelected: notesProvider.selectedFolderId == null &&
+                isSelected: notesProvider.viewMode != NoteViewMode.calendar &&
+                    notesProvider.selectedFolderId == null &&
                     notesProvider.selectedTag == null &&
                     notesProvider.selectedColorIndex == null,
                 onTap: () {
                   notesProvider.resetFilters();
+                  if (notesProvider.viewMode == NoteViewMode.calendar) {
+                    notesProvider.setViewMode(NoteViewMode.masonry);
+                  }
+                  if (isDrawer) Navigator.pop(context);
+                },
+              ),
+
+              // Calendar & Deadlines
+              _SidebarItem(
+                icon: Icons.calendar_month_rounded,
+                title: 'Lịch & Hạn chót',
+                count: notesProvider.pendingDeadlines.length,
+                isSelected: notesProvider.viewMode == NoteViewMode.calendar,
+                onTap: () {
+                  notesProvider.resetFilters();
+                  notesProvider.setViewMode(NoteViewMode.calendar);
                   if (isDrawer) Navigator.pop(context);
                 },
               ),

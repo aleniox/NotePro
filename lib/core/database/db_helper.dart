@@ -34,9 +34,18 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _createDB,
+      onUpgrade: _onUpgrade,
     );
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      try {
+        await db.execute('ALTER TABLE notes ADD COLUMN isCompleted INTEGER DEFAULT 0');
+      } catch (_) {}
+    }
   }
 
   Future<String> _getDatabaseDirectory() async {
@@ -81,7 +90,8 @@ class DatabaseHelper {
         checklist TEXT,
         createdAt TEXT NOT NULL,
         updatedAt TEXT NOT NULL,
-        reminderDateTime TEXT
+        reminderDateTime TEXT,
+        isCompleted INTEGER DEFAULT 0
       )
     ''');
 

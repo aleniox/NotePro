@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
 import '../core/database/db_helper.dart';
+import '../core/utils/desktop_pet_service.dart';
 import '../models/checklist_item.dart';
 import '../models/folder_model.dart';
 import '../models/note_model.dart';
@@ -10,6 +11,7 @@ enum NoteViewMode {
   masonry,
   list,
   kanban,
+  calendar,
 }
 
 class NotesProvider extends ChangeNotifier {
@@ -24,6 +26,7 @@ class NotesProvider extends ChangeNotifier {
   String? _selectedTag;
   int? _selectedColorIndex;
   NoteViewMode _viewMode = NoteViewMode.masonry;
+  bool _isPetEnabled = true;
 
   bool get isLoading => _isLoading;
   String get searchQuery => _searchQuery;
@@ -31,10 +34,51 @@ class NotesProvider extends ChangeNotifier {
   String? get selectedTag => _selectedTag;
   int? get selectedColorIndex => _selectedColorIndex;
   NoteViewMode get viewMode => _viewMode;
+  bool get isPetEnabled => _isPetEnabled;
+  String get petType => DesktopPetService.instance.petType;
 
   List<NoteFolder> get folders => _folders;
   List<NoteModel> get archivedNotes => _archivedNotes;
   List<NoteModel> get trashNotes => _trashNotes;
+
+  void togglePetEnabled(bool val) {
+    _isPetEnabled = val;
+    notifyListeners();
+    _syncWithDesktopPet();
+  }
+
+  Future<void> setPetType(String type) async {
+    await DesktopPetService.instance.setPetType(type);
+    notifyListeners();
+    _syncWithDesktopPet();
+  }
+
+  void _syncWithDesktopPet() {
+    DesktopPetService.instance.syncDeadlines(
+      pendingDeadlines: pendingDeadlines,
+      isPetEnabled: _isPetEnabled,
+    );
+  }
+
+  // Get active pending deadlines (notes with reminder/deadline that are not in trash/archive and not completed)
+  List<NoteModel> get pendingDeadlines {
+    return _notes.where((note) {
+      if (note.isTrash || note.isArchived) return false;
+      if (note.isCompleted) return false;
+      if (note.reminderDateTime == null) return false;
+      return true;
+    }).toList()
+      ..sort((a, b) => a.reminderDateTime!.compareTo(b.reminderDateTime!));
+  }
+
+  // Urgent deadlines: due today or overdue
+  List<NoteModel> get urgentDeadlines {
+    final now = DateTime.now();
+    final endOfToday = DateTime(now.year, now.month, now.day, 23, 59, 59);
+    return pendingDeadlines.where((note) {
+      return note.reminderDateTime!.isBefore(endOfToday);
+    }).toList();
+  }
 
   List<NoteModel> get filteredNotes {
     return _notes.where((note) {
@@ -66,6 +110,18 @@ class NotesProvider extends ChangeNotifier {
   }
 
   NotesProvider() {
+    DesktopPetService.instance.init((completedNoteId) {
+      final note = _notes.firstWhere(
+        (n) => n.id == completedNoteId,
+        orElse: () => NoteModel(id: ''),
+      );
+      if (note.id.isNotEmpty && !note.isCompleted) {
+        toggleDeadlineCompleted(note);
+      }
+    });
+    DesktopPetService.instance.onPetTypeChanged = (type) {
+      notifyListeners();
+    };
     loadAllData();
   }
 
@@ -83,6 +139,7 @@ class NotesProvider extends ChangeNotifier {
     } finally {
       _isLoading = false;
       notifyListeners();
+      _syncWithDesktopPet();
     }
   }
 
@@ -170,6 +227,21 @@ class NotesProvider extends ChangeNotifier {
     final updated = note.copyWith(colorIndex: colorIndex, updatedAt: DateTime.now());
     await DatabaseHelper.instance.updateNote(updated);
     await loadAllData();
+  }
+
+  Future<void> toggleDeadlineCompleted(NoteModel note) async {
+    final updated = note.copyWith(
+      isCompleted: !note.isCompleted,
+      updatedAt: DateTime.now(),
+    );
+    await DatabaseHelper.instance.updateNote(updated);
+    final index = _notes.indexWhere((n) => n.id == note.id);
+    if (index != -1) {
+      _notes[index] = updated;
+      notifyListeners();
+    } else {
+      await loadAllData();
+    }
   }
 
   Future<void> toggleChecklistItem(NoteModel note, String itemId) async {

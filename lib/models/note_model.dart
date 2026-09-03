@@ -18,6 +18,7 @@ class NoteModel {
   DateTime createdAt;
   DateTime updatedAt;
   DateTime? reminderDateTime;
+  bool isCompleted;
 
   NoteModel({
     required this.id,
@@ -36,6 +37,7 @@ class NoteModel {
     DateTime? createdAt,
     DateTime? updatedAt,
     this.reminderDateTime,
+    this.isCompleted = false,
   })  : tags = tags ?? [],
         checklist = checklist ?? [],
         createdAt = createdAt ?? DateTime.now(),
@@ -58,6 +60,7 @@ class NoteModel {
     DateTime? createdAt,
     DateTime? updatedAt,
     DateTime? reminderDateTime,
+    bool? isCompleted,
   }) {
     return NoteModel(
       id: id ?? this.id,
@@ -76,6 +79,7 @@ class NoteModel {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       reminderDateTime: reminderDateTime ?? this.reminderDateTime,
+      isCompleted: isCompleted ?? this.isCompleted,
     );
   }
 
@@ -97,6 +101,7 @@ class NoteModel {
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
       'reminderDateTime': reminderDateTime?.toIso8601String(),
+      'isCompleted': isCompleted ? 1 : 0,
     };
   }
 
@@ -141,6 +146,7 @@ class NoteModel {
       createdAt: map['createdAt'] != null ? DateTime.tryParse(map['createdAt'].toString()) ?? DateTime.now() : DateTime.now(),
       updatedAt: map['updatedAt'] != null ? DateTime.tryParse(map['updatedAt'].toString()) ?? DateTime.now() : DateTime.now(),
       reminderDateTime: map['reminderDateTime'] != null ? DateTime.tryParse(map['reminderDateTime'].toString()) : null,
+      isCompleted: map['isCompleted'] == 1 || map['isCompleted'] == true,
     );
   }
 

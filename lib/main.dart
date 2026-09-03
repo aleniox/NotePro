@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'core/theme/app_theme.dart';
+import 'core/utils/system_tray_service.dart';
 import 'providers/notes_provider.dart';
 import 'providers/theme_provider.dart';
 import 'screens/home_screen.dart';
@@ -18,11 +19,22 @@ void main() async {
     databaseFactory = databaseFactoryFfi;
   }
 
+  final notesProvider = NotesProvider();
+
+  // Initialize System Tray and Background Running on Windows
+  if (!kIsWeb && Platform.isWindows) {
+    await SystemTrayService.instance.init(
+      onTogglePetCallback: () {
+        notesProvider.togglePetEnabled(!notesProvider.isPetEnabled);
+      },
+    );
+  }
+
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
-        ChangeNotifierProvider(create: (_) => NotesProvider()),
+        ChangeNotifierProvider.value(value: notesProvider),
       ],
       child: const NoteCardsApp(),
     ),

@@ -36,6 +36,8 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> with SingleTickerPr
   late List<String> _tags;
   late List<ChecklistItem> _checklist;
   late DateTime _createdAt;
+  DateTime? _reminderDateTime;
+  bool _isCompleted = false;
 
   bool _showPreview = false;
   late TabController _tabController;
@@ -46,7 +48,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> with SingleTickerPr
     _tabController = TabController(length: 2, vsync: this);
 
     final n = widget.note;
-    if (n != null) {
+    if (n != null && n.id.isNotEmpty) {
       _noteId = n.id;
       _titleController = TextEditingController(text: n.title);
       _contentController = TextEditingController(text: n.content);
@@ -60,20 +62,26 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> with SingleTickerPr
       _tags = List.from(n.tags);
       _checklist = n.checklist.map((e) => ChecklistItem(id: e.id, text: e.text, isDone: e.isDone)).toList();
       _createdAt = n.createdAt;
+      _reminderDateTime = n.reminderDateTime;
+      _isCompleted = n.isCompleted;
     } else {
       _noteId = const Uuid().v4();
-      _titleController = TextEditingController();
-      _contentController = TextEditingController();
-      _colorIndex = 0;
-      _isPinned = false;
+      _titleController = TextEditingController(text: n?.title ?? '');
+      _contentController = TextEditingController(text: n?.content ?? '');
+      _colorIndex = n?.colorIndex ?? 0;
+      _isPinned = n?.isPinned ?? false;
       _isArchived = false;
       _isLocked = false;
       _pinCode = null;
-      _selectedFolderId = null;
-      _selectedFolderName = null;
-      _tags = [];
-      _checklist = [];
+      _selectedFolderId = n?.folderId;
+      _selectedFolderName = n?.folderName;
+      _tags = n != null ? List.from(n.tags) : [];
+      _checklist = n != null
+          ? n.checklist.map((e) => ChecklistItem(id: e.id, text: e.text, isDone: e.isDone)).toList()
+          : [];
       _createdAt = DateTime.now();
+      _reminderDateTime = n?.reminderDateTime;
+      _isCompleted = false;
     }
 
     _tagInputController = TextEditingController();
@@ -114,10 +122,12 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> with SingleTickerPr
       checklist: _checklist,
       createdAt: _createdAt,
       updatedAt: DateTime.now(),
+      reminderDateTime: _reminderDateTime,
+      isCompleted: _isCompleted,
     );
 
     final provider = Provider.of<NotesProvider>(context, listen: false);
-    if (widget.note != null) {
+    if (widget.note != null && widget.note!.id.isNotEmpty) {
       provider.updateNote(note);
     } else {
       provider.addNote(note);
@@ -232,6 +242,59 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> with SingleTickerPr
     );
   }
 
+  void _pickDeadlineDateTime(BuildContext context) async {
+    final now = DateTime.now();
+    final initialDate = _reminderDateTime ?? now;
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime(now.year - 1),
+      lastDate: DateTime(now.year + 10),
+      helpText: 'Chọn ngày hết hạn (Deadline)',
+      confirmText: 'Tiếp tục chọn giờ',
+      cancelText: 'Hủy',
+    );
+
+    if (pickedDate == null || !mounted) return;
+
+    final initialTime = _reminderDateTime != null
+        ? TimeOfDay(hour: _reminderDateTime!.hour, minute: _reminderDateTime!.minute)
+        : const TimeOfDay(hour: 17, minute: 0);
+
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: initialTime,
+      helpText: 'Chọn giờ đến hạn',
+      confirmText: 'Lưu hạn chót',
+      cancelText: 'Hủy',
+    );
+
+    if (pickedTime == null || !mounted) return;
+
+    setState(() {
+      _reminderDateTime = DateTime(
+        pickedDate.year,
+        pickedDate.month,
+        pickedDate.day,
+        pickedTime.hour,
+        pickedTime.minute,
+      );
+      _isCompleted = false;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Đã đặt hạn chót: ${pickedTime.format(context)} ngày ${pickedDate.day}/${pickedDate.month}/${pickedDate.year}',
+        ),
+        action: SnackBarAction(
+          label: 'Xóa hạn',
+          onPressed: () => setState(() => _reminderDateTime = null),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -293,6 +356,19 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> with SingleTickerPr
                   tooltip: _isLocked ? 'Đã khóa (Bấm để mở)' : 'Khóa bảo mật',
                   onPressed: _toggleLockDialog,
                 ),
+                // Deadline / Reminder Button
+                IconButton(
+                  icon: Icon(
+                    _reminderDateTime != null ? Icons.alarm_on_rounded : Icons.alarm_add_rounded,
+                    color: _reminderDateTime != null
+                        ? (_isCompleted ? Colors.green : Colors.amber.shade700)
+                        : textColor,
+                  ),
+                  tooltip: _reminderDateTime != null
+                      ? 'Hạn chót: ${_reminderDateTime!.hour}:${_reminderDateTime!.minute.toString().padLeft(2, '0')} ngày ${_reminderDateTime!.day}/${_reminderDateTime!.month}'
+                      : 'Đặt hạn chót (Deadline)',
+                  onPressed: () => _pickDeadlineDateTime(context),
+                ),
                 // Color Picker Menu
                 PopupMenuButton<int>(
                   icon: Icon(Icons.palette_outlined, color: textColor),
@@ -343,6 +419,40 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> with SingleTickerPr
                     }
                   },
                 ),
+                // Delete note button (if existing note)
+                if (widget.note != null && widget.note!.id.isNotEmpty)
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
+                    tooltip: 'Xóa ghi chú này',
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Xóa ghi chú?'),
+                          content: const Text('Bạn có chắc muốn chuyển thẻ ghi chú này vào Thùng rác không?'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx),
+                              child: const Text('Hủy'),
+                            ),
+                            FilledButton(
+                              style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+                              onPressed: () {
+                                final provider = Provider.of<NotesProvider>(context, listen: false);
+                                provider.moveToTrash(widget.note!);
+                                Navigator.pop(ctx); // Close dialog
+                                Navigator.pop(context); // Close editor
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Đã chuyển ghi chú vào Thùng rác')),
+                                );
+                              },
+                              child: const Text('Xóa'),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
                 // Save button
                 FilledButton.icon(
                   onPressed: () {
@@ -463,6 +573,81 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> with SingleTickerPr
                           ],
                         ),
                       ),
+
+                      // Deadline banner if set
+                      if (_reminderDateTime != null)
+                        Container(
+                          margin: const EdgeInsets.only(top: 6, bottom: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: _isCompleted
+                                ? Colors.green.withOpacity(0.12)
+                                : Colors.amber.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: _isCompleted
+                                  ? Colors.green.withOpacity(0.4)
+                                  : Colors.amber.withOpacity(0.4),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                _isCompleted ? Icons.check_circle_rounded : Icons.alarm_rounded,
+                                size: 18,
+                                color: _isCompleted ? Colors.green : Colors.amber.shade800,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _isCompleted
+                                      ? 'Đã hoàn thành hạn chót: ${_reminderDateTime!.hour}:${_reminderDateTime!.minute.toString().padLeft(2, '0')} ngày ${_reminderDateTime!.day}/${_reminderDateTime!.month}/${_reminderDateTime!.year}'
+                                      : 'Hạn chót: ${_reminderDateTime!.hour}:${_reminderDateTime!.minute.toString().padLeft(2, '0')} ngày ${_reminderDateTime!.day}/${_reminderDateTime!.month}/${_reminderDateTime!.year}',
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: _isCompleted ? Colors.green.shade800 : Colors.amber.shade900,
+                                    decoration: _isCompleted ? TextDecoration.lineThrough : null,
+                                  ),
+                                ),
+                              ),
+                              // Toggle Done button
+                              InkWell(
+                                onTap: () => setState(() => _isCompleted = !_isCompleted),
+                                borderRadius: BorderRadius.circular(6),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  child: Text(
+                                    _isCompleted ? 'Chưa xong' : 'Xong',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: _isCompleted ? Colors.grey : Colors.green.shade700,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              // Edit date
+                              IconButton(
+                                icon: const Icon(Icons.edit_calendar_rounded, size: 16),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                tooltip: 'Đổi ngày giờ',
+                                onPressed: () => _pickDeadlineDateTime(context),
+                              ),
+                              const SizedBox(width: 6),
+                              // Clear deadline
+                              IconButton(
+                                icon: const Icon(Icons.close_rounded, size: 16),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                tooltip: 'Xóa hạn chót',
+                                onPressed: () => setState(() => _reminderDateTime = null),
+                              ),
+                            ],
+                          ),
+                        ),
 
                       // Title input
                       TextField(
