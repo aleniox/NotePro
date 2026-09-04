@@ -226,47 +226,13 @@ class AdaptiveSidebar extends StatelessWidget {
       children: [
         // App Header
         Container(
-          padding: const EdgeInsets.fromLTRB(18, 20, 18, 14),
+          padding: const EdgeInsets.fromLTRB(16, 18, 14, 14),
           alignment: Alignment.centerLeft,
           child: Row(
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: Image.asset(
-                  'assets/app_logo.png',
-                  width: 38,
-                  height: 38,
-                  fit: BoxFit.cover,
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'NoteCards Pro',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.3,
-                      ),
-                    ),
-                    Text(
-                      'Ghi chú chuyên nghiệp',
-                      style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w500),
-                    ),
-                  ],
-                ),
-              ),
-              IconButton(
-                icon: Icon(
-                  isDrawer ? Icons.close_rounded : Icons.menu_open_rounded,
-                  size: 20,
-                  color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
-                ),
-                tooltip: isDrawer ? 'Đóng menu' : 'Thu gọn thanh bên (Ctrl+B)',
-                onPressed: () {
+              _HeaderLogoButton(
+                isDrawer: isDrawer,
+                onTap: () {
                   if (isDrawer) {
                     Navigator.pop(context);
                   } else {
@@ -274,6 +240,38 @@ class AdaptiveSidebar extends StatelessWidget {
                   }
                 },
               ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'NoteCards Pro',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Ghi chú chuyên nghiệp',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
+              ),
+              if (isDrawer)
+                IconButton(
+                  icon: const Icon(Icons.close_rounded, size: 20),
+                  tooltip: 'Đóng menu',
+                  onPressed: () => Navigator.pop(context),
+                ),
             ],
           ),
         ),
@@ -904,6 +902,133 @@ class _SidebarItem extends StatelessWidget {
                     ),
                   ),
               ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HeaderLogoButton extends StatefulWidget {
+  final bool isDrawer;
+  final VoidCallback onTap;
+
+  const _HeaderLogoButton({
+    required this.isDrawer,
+    required this.onTap,
+  });
+
+  @override
+  State<_HeaderLogoButton> createState() => _HeaderLogoButtonState();
+}
+
+class _HeaderLogoButtonState extends State<_HeaderLogoButton> {
+  bool _isHovered = false;
+  bool _isPressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final primaryColor = theme.colorScheme.primary;
+
+    final scale = _isPressed ? 0.93 : (_isHovered ? 1.05 : 1.0);
+
+    return Tooltip(
+      message: widget.isDrawer ? 'Đóng menu' : 'Thu gọn thanh bên (Ctrl+B)',
+      waitDuration: const Duration(milliseconds: 300),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _isHovered = true),
+        onExit: (_) => setState(() {
+          _isHovered = false;
+          _isPressed = false;
+        }),
+        child: GestureDetector(
+          onTapDown: (_) => setState(() => _isPressed = true),
+          onTapUp: (_) => setState(() => _isPressed = false),
+          onTapCancel: () => setState(() => _isPressed = false),
+          onTap: widget.onTap,
+          child: AnimatedScale(
+            scale: scale,
+            duration: const Duration(milliseconds: 120),
+            curve: Curves.easeOutCubic,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutCubic,
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: _isHovered
+                      ? primaryColor.withValues(alpha: 0.7)
+                      : (isDark
+                          ? Colors.white.withValues(alpha: 0.12)
+                          : Colors.black.withValues(alpha: 0.08)),
+                  width: _isHovered ? 1.5 : 1.0,
+                ),
+                boxShadow: _isHovered
+                    ? [
+                        BoxShadow(
+                          color: primaryColor.withValues(alpha: 0.35),
+                          blurRadius: 10,
+                          offset: const Offset(0, 2),
+                        ),
+                      ]
+                    : null,
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(9),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Image.asset(
+                      'assets/app_logo.png',
+                      width: 38,
+                      height: 38,
+                      fit: BoxFit.cover,
+                    ),
+                    AnimatedOpacity(
+                      opacity: _isHovered ? 1.0 : 0.0,
+                      duration: const Duration(milliseconds: 180),
+                      curve: Curves.easeOutCubic,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              primaryColor.withValues(alpha: 0.88),
+                              primaryColor.withValues(alpha: 0.98),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                        ),
+                        child: Center(
+                          child: AnimatedSlide(
+                            offset: _isHovered ? Offset.zero : const Offset(0.2, 0),
+                            duration: const Duration(milliseconds: 180),
+                            curve: Curves.easeOutCubic,
+                            child: Icon(
+                              widget.isDrawer ? Icons.close_rounded : Icons.chevron_left_rounded,
+                              color: Colors.white,
+                              size: 24,
+                              shadows: const [
+                                Shadow(
+                                  color: Color(0x33000000),
+                                  blurRadius: 4,
+                                  offset: Offset(0, 1),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ),

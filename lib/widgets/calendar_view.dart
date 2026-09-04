@@ -94,10 +94,12 @@ class _CalendarViewState extends State<CalendarView> {
     final now = DateTime.now();
     final selectedDayNotes = _getNotesForDay(_selectedDay);
 
-    final isWide = MediaQuery.of(context).size.width >= 900;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isWide = screenWidth >= 900;
+    final isCompact = screenWidth < 500;
 
     final calendarCard = Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(isCompact ? 12 : 16),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -108,41 +110,46 @@ class _CalendarViewState extends State<CalendarView> {
       child: Column(
         children: [
           // Month navigation header
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
             children: [
+              Text(
+                'Tháng ${_focusedMonth.month}, ${_focusedMonth.year}',
+                style: TextStyle(
+                  fontSize: isCompact ? 16 : 18,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: -0.3,
+                ),
+              ),
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    'Tháng ${_focusedMonth.month}, ${_focusedMonth.year}',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: -0.3,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
                   OutlinedButton(
                     onPressed: _goToday,
                     style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      minimumSize: const Size(0, 30),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      minimumSize: const Size(0, 28),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
-                    child: const Text('Hôm nay', style: TextStyle(fontSize: 12)),
+                    child: const Text('Hôm nay', style: TextStyle(fontSize: 11.5)),
                   ),
-                ],
-              ),
-              Row(
-                children: [
+                  const SizedBox(width: 4),
                   IconButton(
                     onPressed: _prevMonth,
                     icon: const Icon(Icons.chevron_left_rounded),
                     tooltip: 'Tháng trước',
+                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    padding: const EdgeInsets.all(4),
                   ),
                   IconButton(
                     onPressed: _nextMonth,
                     icon: const Icon(Icons.chevron_right_rounded),
                     tooltip: 'Tháng sau',
+                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    padding: const EdgeInsets.all(4),
                   ),
                 ],
               ),
@@ -175,7 +182,7 @@ class _CalendarViewState extends State<CalendarView> {
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 7,
-              childAspectRatio: 1.1,
+              childAspectRatio: 0.95,
             ),
             itemCount: firstDayOffset + daysInMonth,
             itemBuilder: (context, index) {
@@ -195,74 +202,81 @@ class _CalendarViewState extends State<CalendarView> {
                 onTap: () => setState(() => _selectedDay = currentDay),
                 borderRadius: BorderRadius.circular(10),
                 child: Container(
-                  margin: const EdgeInsets.all(2),
+                  margin: const EdgeInsets.all(1.5),
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? primaryColor.withOpacity(0.18)
+                        ? primaryColor.withValues(alpha: 0.18)
                         : (isToday ? (isDark ? Colors.white10 : Colors.blue.shade50) : Colors.transparent),
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
                       color: isSelected
                           ? primaryColor
-                          : (isToday ? primaryColor.withOpacity(0.5) : Colors.transparent),
+                          : (isToday ? primaryColor.withValues(alpha: 0.5) : Colors.transparent),
                       width: isSelected ? 2 : 1,
                     ),
                   ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        '$dayNum',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: isSelected || isToday ? FontWeight.bold : FontWeight.normal,
-                          color: isSelected
-                              ? primaryColor
-                              : (isToday
+                  child: Center(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            '$dayNum',
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: isSelected || isToday ? FontWeight.bold : FontWeight.normal,
+                              color: isSelected
                                   ? primaryColor
-                                  : (isDark ? Colors.white : Colors.black87)),
-                        ),
-                      ),
-                      if (dayNotes.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 2),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              if (hasPendingDeadline)
-                                Container(
-                                  width: 6,
-                                  height: 6,
-                                  margin: const EdgeInsets.symmetric(horizontal: 1),
-                                  decoration: const BoxDecoration(
-                                    color: Colors.amber,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                              if (hasCompletedDeadline)
-                                Container(
-                                  width: 6,
-                                  height: 6,
-                                  margin: const EdgeInsets.symmetric(horizontal: 1),
-                                  decoration: const BoxDecoration(
-                                    color: Colors.green,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                              if (!hasPendingDeadline && !hasCompletedDeadline)
-                                Container(
-                                  width: 5,
-                                  height: 5,
-                                  margin: const EdgeInsets.symmetric(horizontal: 1),
-                                  decoration: BoxDecoration(
-                                    color: primaryColor.withOpacity(0.6),
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                            ],
+                                  : (isToday
+                                      ? primaryColor
+                                      : (isDark ? Colors.white : Colors.black87)),
+                            ),
                           ),
-                        ),
-                    ],
+                          if (dayNotes.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  if (hasPendingDeadline)
+                                    Container(
+                                      width: 5,
+                                      height: 5,
+                                      margin: const EdgeInsets.symmetric(horizontal: 1),
+                                      decoration: const BoxDecoration(
+                                        color: Colors.amber,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                  if (hasCompletedDeadline)
+                                    Container(
+                                      width: 5,
+                                      height: 5,
+                                      margin: const EdgeInsets.symmetric(horizontal: 1),
+                                      decoration: const BoxDecoration(
+                                        color: Colors.green,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                  if (!hasPendingDeadline && !hasCompletedDeadline)
+                                    Container(
+                                      width: 4.5,
+                                      height: 4.5,
+                                      margin: const EdgeInsets.symmetric(horizontal: 1),
+                                      decoration: BoxDecoration(
+                                        color: primaryColor.withValues(alpha: 0.6),
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               );
@@ -274,7 +288,7 @@ class _CalendarViewState extends State<CalendarView> {
 
     // Selected Day Tasks & Notes List
     final dayDetails = Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(isCompact ? 12 : 16),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -285,15 +299,19 @@ class _CalendarViewState extends State<CalendarView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 10,
             children: [
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     'Ngày ${_selectedDay.day}/${_selectedDay.month}/${_selectedDay.year}',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontSize: isCompact ? 15 : 16, fontWeight: FontWeight.bold),
                   ),
                   Text(
                     _getVietnameseWeekday(_selectedDay),
@@ -491,7 +509,7 @@ class _CalendarViewState extends State<CalendarView> {
     );
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(isCompact ? 10 : 20),
       child: isWide
           ? Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -504,7 +522,7 @@ class _CalendarViewState extends State<CalendarView> {
           : Column(
               children: [
                 calendarCard,
-                const SizedBox(height: 20),
+                SizedBox(height: isCompact ? 12 : 20),
                 dayDetails,
               ],
             ),

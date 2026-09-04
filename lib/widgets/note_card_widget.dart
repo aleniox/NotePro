@@ -185,6 +185,20 @@ class _NoteCardWidgetState extends State<NoteCardWidget> {
       ),
       items: [
         PopupMenuItem(
+          value: 'toggle_complete',
+          child: Row(
+            children: [
+              Icon(
+                widget.note.isCompleted ? Icons.radio_button_unchecked_rounded : Icons.check_circle_rounded,
+                size: 18,
+                color: widget.note.isCompleted ? null : Colors.green,
+              ),
+              const SizedBox(width: 10),
+              Text(widget.note.isCompleted ? 'Đánh dấu chưa xong' : 'Đánh dấu đã hoàn thành'),
+            ],
+          ),
+        ),
+        PopupMenuItem(
           value: 'pin',
           child: Row(
             children: [
@@ -250,7 +264,9 @@ class _NoteCardWidgetState extends State<NoteCardWidget> {
 
     if (!context.mounted) return;
 
-    if (selected == 'pin') {
+    if (selected == 'toggle_complete') {
+      notesProvider.toggleDeadlineCompleted(widget.note);
+    } else if (selected == 'pin') {
       notesProvider.togglePin(widget.note);
     } else if (selected == 'color') {
       _showColorPickerModal(context);
@@ -318,10 +334,30 @@ class _NoteCardWidgetState extends State<NoteCardWidget> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Header: Title & Pin Button
+                // Header: Checkbox, Title & Pin Button
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Quick complete check button
+                    Tooltip(
+                      message: widget.note.isCompleted ? 'Đánh dấu chưa hoàn thành' : 'Đánh dấu đã hoàn thành',
+                      child: InkWell(
+                        onTap: () => notesProvider.toggleDeadlineCompleted(widget.note),
+                        borderRadius: BorderRadius.circular(20),
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 7, top: 1),
+                          child: Icon(
+                            widget.note.isCompleted
+                                ? Icons.check_circle_rounded
+                                : Icons.radio_button_unchecked_rounded,
+                            size: 19,
+                            color: widget.note.isCompleted
+                                ? Colors.green
+                                : textColor.withOpacity(0.35),
+                          ),
+                        ),
+                      ),
+                    ),
                     if (widget.note.isLocked) ...[
                       const Icon(Icons.lock_rounded, size: 18, color: Colors.amber),
                       const SizedBox(width: 6),
@@ -332,8 +368,9 @@ class _NoteCardWidgetState extends State<NoteCardWidget> {
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: textColor,
+                          color: widget.note.isCompleted ? textColor.withOpacity(0.5) : textColor,
                           fontStyle: widget.note.title.isEmpty ? FontStyle.italic : FontStyle.normal,
+                          decoration: widget.note.isCompleted ? TextDecoration.lineThrough : null,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,

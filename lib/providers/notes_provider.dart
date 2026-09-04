@@ -15,6 +15,15 @@ enum NoteViewMode {
   calendar,
 }
 
+enum NoteSortOption {
+  smartTask, // Hợp lý theo công việc: Ghim -> Việc gấp & Deadline -> Chưa xong -> Đã xong
+  deadlineAsc, // Hạn chót gần nhất
+  completedLast, // Chưa hoàn thành lên trước
+  updatedDesc, // Mới cập nhật gần đây
+  createdDesc, // Mới tạo gần nhất
+  titleAsc, // Tên A -> Z
+}
+
 class NotesProvider extends ChangeNotifier {
   List<NoteModel> _notes = [];
   List<NoteModel> _archivedNotes = [];
@@ -27,6 +36,7 @@ class NotesProvider extends ChangeNotifier {
   String? _selectedTag;
   int? _selectedColorIndex;
   NoteViewMode _viewMode = NoteViewMode.masonry;
+  NoteSortOption _sortOption = NoteSortOption.smartTask;
   bool _isPetEnabled = true;
   bool _isSidebarVisible = true;
 
@@ -36,6 +46,7 @@ class NotesProvider extends ChangeNotifier {
   String? get selectedTag => _selectedTag;
   int? get selectedColorIndex => _selectedColorIndex;
   NoteViewMode get viewMode => _viewMode;
+  NoteSortOption get sortOption => _sortOption;
   bool get isPetEnabled => _isPetEnabled;
   bool get isSidebarVisible => _isSidebarVisible;
   String get petType => DesktopPetService.instance.petType;
@@ -106,7 +117,7 @@ class NotesProvider extends ChangeNotifier {
   }
 
   List<NoteModel> get filteredNotes {
-    return _notes.where((note) {
+    final list = _notes.where((note) {
       if (_searchQuery.isNotEmpty && !note.matchesSearch(_searchQuery)) {
         return false;
       }
@@ -121,6 +132,77 @@ class NotesProvider extends ChangeNotifier {
       }
       return true;
     }).toList();
+
+    _applySorting(list);
+    return list;
+  }
+
+  void _applySorting(List<NoteModel> list) {
+    list.sort((a, b) {
+      switch (_sortOption) {
+        case NoteSortOption.smartTask:
+          // 1. Pinned first
+          if (a.isPinned != b.isPinned) {
+            return a.isPinned ? -1 : 1;
+          }
+          // 2. Uncompleted before completed
+          if (a.isCompleted != b.isCompleted) {
+            return a.isCompleted ? 1 : -1;
+          }
+          // 3. For uncompleted notes: notes with deadline first, sorted chronologically
+          if (!a.isCompleted) {
+            if (a.reminderDateTime != null && b.reminderDateTime != null) {
+              return a.reminderDateTime!.compareTo(b.reminderDateTime!);
+            }
+            if (a.reminderDateTime != null && b.reminderDateTime == null) {
+              return -1;
+            }
+            if (a.reminderDateTime == null && b.reminderDateTime != null) {
+              return 1;
+            }
+          }
+          // 4. Default to most recently updated
+          return b.updatedAt.compareTo(a.updatedAt);
+
+        case NoteSortOption.deadlineAsc:
+          if (a.isPinned != b.isPinned) {
+            return a.isPinned ? -1 : 1;
+          }
+          if (a.reminderDateTime != null && b.reminderDateTime != null) {
+            return a.reminderDateTime!.compareTo(b.reminderDateTime!);
+          }
+          if (a.reminderDateTime != null) return -1;
+          if (b.reminderDateTime != null) return 1;
+          return b.updatedAt.compareTo(a.updatedAt);
+
+        case NoteSortOption.completedLast:
+          if (a.isPinned != b.isPinned) {
+            return a.isPinned ? -1 : 1;
+          }
+          if (a.isCompleted != b.isCompleted) {
+            return a.isCompleted ? 1 : -1;
+          }
+          return b.updatedAt.compareTo(a.updatedAt);
+
+        case NoteSortOption.updatedDesc:
+          if (a.isPinned != b.isPinned) {
+            return a.isPinned ? -1 : 1;
+          }
+          return b.updatedAt.compareTo(a.updatedAt);
+
+        case NoteSortOption.createdDesc:
+          if (a.isPinned != b.isPinned) {
+            return a.isPinned ? -1 : 1;
+          }
+          return b.createdAt.compareTo(a.createdAt);
+
+        case NoteSortOption.titleAsc:
+          if (a.isPinned != b.isPinned) {
+            return a.isPinned ? -1 : 1;
+          }
+          return a.title.toLowerCase().compareTo(b.title.toLowerCase());
+      }
+    });
   }
 
   List<NoteModel> get pinnedNotes => filteredNotes.where((n) => n.isPinned).toList();
@@ -148,6 +230,7 @@ class NotesProvider extends ChangeNotifier {
       notifyListeners();
     };
     _loadSidebarPreference();
+    _loadSortPreference();
     loadAllData();
   }
 
@@ -172,6 +255,26 @@ class NotesProvider extends ChangeNotifier {
   void setViewMode(NoteViewMode mode) {
     _viewMode = mode;
     notifyListeners();
+  }
+
+  Future<void> _loadSortPreference() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final index = prefs.getInt('note_sort_option');
+      if (index != null && index >= 0 && index < NoteSortOption.values.length) {
+        _sortOption = NoteSortOption.values[index];
+        notifyListeners();
+      }
+    } catch (_) {}
+  }
+
+  Future<void> setSortOption(NoteSortOption option) async {
+    _sortOption = option;
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('note_sort_option', option.index);
+    } catch (_) {}
   }
 
   void setSearchQuery(String query) {
@@ -278,7 +381,15 @@ class NotesProvider extends ChangeNotifier {
       return item;
     }).toList();
 
-    final updated = note.copyWith(checklist: updatedChecklist, updatedAt: DateTime.now());
+    // Auto-complete note when all checklist items are done!
+    final bool allDone = updatedChecklist.isNotEmpty && updatedChecklist.every((i) => i.isDone);
+    final bool isCompleted = allDone ? true : (note.isCompleted && !allDone ? false : note.isCompleted);
+
+    final updated = note.copyWith(
+      checklist: updatedChecklist,
+      isCompleted: isCompleted,
+      updatedAt: DateTime.now(),
+    );
     await DatabaseHelper.instance.updateNote(updated);
     // Instant update in-memory list for snappy UI
     final index = _notes.indexWhere((n) => n.id == note.id);

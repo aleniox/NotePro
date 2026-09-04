@@ -60,11 +60,19 @@ class HomeScreen extends StatelessWidget {
                                 onPressed: () => Scaffold.of(ctx).openDrawer(),
                               ),
                             ),
+                            titleSpacing: 0,
                             title: const Row(
                               children: [
                                 Icon(Icons.sticky_note_2_rounded, color: Color(0xFF6366F1), size: 22),
                                 SizedBox(width: 8),
-                                Text('NoteCards Pro', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                                Expanded(
+                                  child: Text(
+                                    'NoteCards Pro',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                                  ),
+                                ),
                               ],
                             ),
                           ),

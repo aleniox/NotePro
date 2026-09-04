@@ -61,6 +61,37 @@ class AppTheme {
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
     ),
+    snackBarTheme: SnackBarThemeData(
+      behavior: SnackBarBehavior.floating,
+      showCloseIcon: true,
+      backgroundColor: const Color(0xFF1E293B),
+      contentTextStyle: const TextStyle(
+        color: Colors.white,
+        fontSize: 13.5,
+        fontWeight: FontWeight.w500,
+      ),
+      closeIconColor: Colors.white70,
+      actionTextColor: primaryAccent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: Color(0xFF334155), width: 1),
+      ),
+      elevation: 6,
+    ),
+    scrollbarTheme: ScrollbarThemeData(
+      thumbVisibility: const WidgetStatePropertyAll(true),
+      trackVisibility: const WidgetStatePropertyAll(true),
+      interactive: true,
+      thickness: const WidgetStatePropertyAll(8.0),
+      radius: const Radius.circular(8.0),
+      thumbColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.hovered) || states.contains(WidgetState.dragged)) {
+          return primaryColor.withValues(alpha: 0.85);
+        }
+        return const Color(0xFFCBD5E1);
+      }),
+      trackColor: const WidgetStatePropertyAll(Color(0xFFF1F5F9)),
+    ),
   );
 
   static ThemeData darkTheme = ThemeData(
@@ -118,6 +149,37 @@ class AppTheme {
       foregroundColor: Colors.white,
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+    ),
+    snackBarTheme: SnackBarThemeData(
+      behavior: SnackBarBehavior.floating,
+      showCloseIcon: true,
+      backgroundColor: const Color(0xFF1E293B),
+      contentTextStyle: const TextStyle(
+        color: Color(0xFFF8FAFC),
+        fontSize: 13.5,
+        fontWeight: FontWeight.w500,
+      ),
+      closeIconColor: Colors.grey.shade400,
+      actionTextColor: primaryAccent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: Color(0xFF334155), width: 1),
+      ),
+      elevation: 6,
+    ),
+    scrollbarTheme: ScrollbarThemeData(
+      thumbVisibility: const WidgetStatePropertyAll(true),
+      trackVisibility: const WidgetStatePropertyAll(true),
+      interactive: true,
+      thickness: const WidgetStatePropertyAll(8.0),
+      radius: const Radius.circular(8.0),
+      thumbColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.hovered) || states.contains(WidgetState.dragged)) {
+          return primaryAccent.withValues(alpha: 0.9);
+        }
+        return const Color(0xFF475569);
+      }),
+      trackColor: const WidgetStatePropertyAll(Color(0xFF1E293B)),
     ),
   );
 }
