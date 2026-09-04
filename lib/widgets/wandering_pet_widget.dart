@@ -185,7 +185,7 @@ class _WanderingPetWidgetState extends State<WanderingPetWidget>
                       angle: wiggle,
                       child: Transform(
                         alignment: Alignment.center,
-                        transform: Matrix4.diagonal3Values(_facingRight ? 1.0 : -1.0, 1.0, 1.0),
+                        transform: Matrix4.diagonal3Values(_facingRight ? -1.0 : 1.0, 1.0, 1.0),
                         child: _buildCutePetGraphic(),
                       ),
                     ),

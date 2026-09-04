@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 import '../core/database/db_helper.dart';
@@ -27,6 +28,7 @@ class NotesProvider extends ChangeNotifier {
   int? _selectedColorIndex;
   NoteViewMode _viewMode = NoteViewMode.masonry;
   bool _isPetEnabled = true;
+  bool _isSidebarVisible = true;
 
   bool get isLoading => _isLoading;
   String get searchQuery => _searchQuery;
@@ -35,11 +37,34 @@ class NotesProvider extends ChangeNotifier {
   int? get selectedColorIndex => _selectedColorIndex;
   NoteViewMode get viewMode => _viewMode;
   bool get isPetEnabled => _isPetEnabled;
+  bool get isSidebarVisible => _isSidebarVisible;
   String get petType => DesktopPetService.instance.petType;
 
   List<NoteFolder> get folders => _folders;
   List<NoteModel> get archivedNotes => _archivedNotes;
   List<NoteModel> get trashNotes => _trashNotes;
+
+  void toggleSidebar([bool? val]) {
+    _isSidebarVisible = val ?? !_isSidebarVisible;
+    notifyListeners();
+    _saveSidebarPreference();
+  }
+
+  Future<void> _loadSidebarPreference() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _isSidebarVisible = prefs.getBool('is_sidebar_visible') ?? true;
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  Future<void> _saveSidebarPreference() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('is_sidebar_visible', _isSidebarVisible);
+    } catch (_) {}
+  }
+
 
   void togglePetEnabled(bool val) {
     _isPetEnabled = val;
@@ -122,6 +147,7 @@ class NotesProvider extends ChangeNotifier {
     DesktopPetService.instance.onPetTypeChanged = (type) {
       notifyListeners();
     };
+    _loadSidebarPreference();
     loadAllData();
   }
 

@@ -49,3 +49,7 @@ NoteCards_Pro_Android.apk
 /test
 /windows
 *.zip
+/ios
+/macos
+/web
+/linux

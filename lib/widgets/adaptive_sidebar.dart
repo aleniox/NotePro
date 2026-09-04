@@ -240,22 +240,39 @@ class AdaptiveSidebar extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'NoteCards Pro',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.3,
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'NoteCards Pro',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.3,
+                      ),
                     ),
-                  ),
-                  Text(
-                    'Ghi chú chuyên nghiệp',
-                    style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w500),
-                  ),
-                ],
+                    Text(
+                      'Ghi chú chuyên nghiệp',
+                      style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: Icon(
+                  isDrawer ? Icons.close_rounded : Icons.menu_open_rounded,
+                  size: 20,
+                  color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
+                ),
+                tooltip: isDrawer ? 'Đóng menu' : 'Thu gọn thanh bên (Ctrl+B)',
+                onPressed: () {
+                  if (isDrawer) {
+                    Navigator.pop(context);
+                  } else {
+                    notesProvider.toggleSidebar(false);
+                  }
+                },
               ),
             ],
           ),

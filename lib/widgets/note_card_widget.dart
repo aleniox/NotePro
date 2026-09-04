@@ -199,7 +199,7 @@ class _NoteCardWidgetState extends State<NoteCardWidget> {
           child: Row(
             children: [
               Icon(Icons.palette_outlined, size: 18),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Text('Đổi màu ghi chú'),
             ],
           ),
@@ -209,7 +209,7 @@ class _NoteCardWidgetState extends State<NoteCardWidget> {
           child: Row(
             children: [
               Icon(Icons.copy_outlined, size: 18),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Text('Nhân đôi ghi chú'),
             ],
           ),
@@ -219,7 +219,7 @@ class _NoteCardWidgetState extends State<NoteCardWidget> {
           child: Row(
             children: [
               Icon(Icons.file_download_outlined, size: 18),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Text('Lưu thành tệp văn bản'),
             ],
           ),
@@ -229,7 +229,7 @@ class _NoteCardWidgetState extends State<NoteCardWidget> {
           child: Row(
             children: [
               Icon(Icons.archive_outlined, size: 18),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Text('Chuyển vào Lưu trữ'),
             ],
           ),
@@ -240,7 +240,7 @@ class _NoteCardWidgetState extends State<NoteCardWidget> {
           child: Row(
             children: [
               Icon(Icons.delete_outline, color: Colors.redAccent, size: 18),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Text('Chuyển vào Thùng rác', style: TextStyle(color: Colors.redAccent)),
             ],
           ),

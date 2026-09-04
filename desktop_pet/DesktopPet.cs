@@ -133,7 +133,7 @@ namespace NoteProDesktopPet
         private string[] _reaperPhrasesNormal = new string[]
         {
             "Ngươi có biết vì sao ta xuất hiện không? DEADLINE sắp tới rồi đấy! 💀⏳",
-            "Lưỡi hái của ta đã mài sắc bén... Mau làm việc trước khi ta thu hoạch! ⚡",
+            "Lưỡi hái của ta đã mài sắc bén... Mau làm việc trước khi ta thu hoạch ngươi! ⚡",
             "Thời gian đang cạn dần từng hạt cát... Đừng để ta phải vung hái nha! 👻",
             "Mau bấm [✓ Hoàn thành!] để xua đuổi ta đi nào, người phàm trần! 🕯️",
             "Ta đang đứng canh chừng ngươi đấy, làm cho tử tế vào nhé! 💀"
@@ -157,10 +157,26 @@ namespace NoteProDesktopPet
             Height = 270;
 
             string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            string dataDir = System.IO.Path.Combine(appData, "com.notepro.app", "notepro", "NoteProData");
-            if (!Directory.Exists(dataDir))
+            string[] candidateDirs = new string[]
             {
-                Directory.CreateDirectory(dataDir);
+                System.IO.Path.Combine(appData, "com.example", "notepro", "NoteProData"),
+                System.IO.Path.Combine(appData, "com.notepro.app", "notepro", "NoteProData"),
+                System.IO.Path.Combine(appData, "NoteProData")
+            };
+
+            string dataDir = candidateDirs[0];
+            foreach (string candidate in candidateDirs)
+            {
+                if (System.IO.Directory.Exists(candidate))
+                {
+                    dataDir = candidate;
+                    break;
+                }
+            }
+
+            if (!System.IO.Directory.Exists(dataDir))
+            {
+                System.IO.Directory.CreateDirectory(dataDir);
             }
             _statePath = System.IO.Path.Combine(dataDir, "pet_state.json");
             _actionPath = System.IO.Path.Combine(dataDir, "pet_action.json");
@@ -174,11 +190,21 @@ namespace NoteProDesktopPet
             PreviewMouseMove += OnPreviewMouseMove;
             PreviewMouseLeftButtonUp += OnPreviewMouseLeftButtonUp;
 
+            Log("PetWindow constructor: calling BuildUI");
             BuildUI();
+            Log("PetWindow constructor: calling SyncFromStateFile");
             SyncFromStateFile();
+            Log("PetWindow constructor: calling ApplyPetGraphic");
             ApplyPetGraphic();
+            Log("PetWindow constructor: calling SetupContinuousAnimations");
             SetupContinuousAnimations();
+            Log("PetWindow constructor: calling StartTimers");
             StartTimers();
+            Closing += (s, e) => Log("PetWindow Closing fired! Cancel=" + e.Cancel);
+            Closed += (s, e) => Log("PetWindow Closed event fired! Stack: " + Environment.StackTrace);
+            Loaded += (s, e) => Log("PetWindow Loaded fired!");
+            Unloaded += (s, e) => Log("PetWindow Unloaded fired!");
+            Log("PetWindow constructor finished successfully");
         }
 
         private void OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -221,6 +247,12 @@ namespace NoteProDesktopPet
 
                 Left = _dragStartWindow.X + dx;
                 Top = _dragStartWindow.Y + dy;
+
+                if (Math.Abs(dx) > 3)
+                {
+                    _facingRight = dx > 0;
+                    _flipTransform.ScaleX = _facingRight ? -1 : 1;
+                }
 
                 _tiltTransform.Angle = Math.Max(-15, Math.Min(15, dx * 0.15));
                 _bounceTransform.Y = -14;
@@ -1169,100 +1201,152 @@ namespace NoteProDesktopPet
         private void StartTimers()
         {
             _behaviorTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(6.0) };
-            _behaviorTimer.Tick += (s, e) => DecideNextAction();
+            _behaviorTimer.Tick += (s, e) => {
+                Log("behaviorTimer tick");
+                DecideNextAction();
+            };
             _behaviorTimer.Start();
 
             _blinkTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3.5) };
-            _blinkTimer.Tick += (s, e) => DoBlink();
+            _blinkTimer.Tick += (s, e) => {
+                Log("blinkTimer tick");
+                DoBlink();
+            };
             _blinkTimer.Start();
 
             _earTwitchTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(4.5) };
-            _earTwitchTimer.Tick += (s, e) => DoEarTwitch();
+            _earTwitchTimer.Tick += (s, e) => {
+                Log("earTwitchTimer tick");
+                DoEarTwitch();
+            };
             _earTwitchTimer.Start();
 
             _speechTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(9) };
-            _speechTimer.Tick += (s, e) => CycleSpeechText();
+            _speechTimer.Tick += (s, e) => {
+                Log("speechTimer tick");
+                CycleSpeechText();
+            };
             _speechTimer.Start();
 
             _syncTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
-            _syncTimer.Tick += (s, e) => SyncFromStateFile();
+            _syncTimer.Tick += (s, e) => {
+                Log("syncTimer tick");
+                SyncFromStateFile();
+            };
             _syncTimer.Start();
         }
 
         private void DoBlink()
         {
-            if (_eyesScaleY == null || _state == PetState.Sleeping || _isCelebrating) return;
-            DoubleAnimation blinkAnim = new DoubleAnimation { From = 1.0, To = 0.1, Duration = TimeSpan.FromMilliseconds(100), AutoReverse = true, RepeatBehavior = new RepeatBehavior(1) };
-            _eyesScaleY.BeginAnimation(ScaleTransform.ScaleYProperty, blinkAnim);
+            try
+            {
+                if (_eyesScaleY == null || _state == PetState.Sleeping || _isCelebrating) return;
+                DoubleAnimation blinkAnim = new DoubleAnimation { From = 1.0, To = 0.1, Duration = TimeSpan.FromMilliseconds(100), AutoReverse = true, RepeatBehavior = new RepeatBehavior(1) };
+                _eyesScaleY.BeginAnimation(ScaleTransform.ScaleYProperty, blinkAnim);
+            }
+            catch (Exception ex)
+            {
+                Log("Error in DoBlink: " + ex.Message);
+            }
         }
 
         private void DoEarTwitch()
         {
-            if (_state == PetState.Sleeping) return;
-            bool twitchLeft = _random.Next(2) == 0;
-            DoubleAnimation twitchAnim = new DoubleAnimation { From = 0, To = twitchLeft ? -15 : 15, Duration = TimeSpan.FromMilliseconds(120), AutoReverse = true, RepeatBehavior = new RepeatBehavior(2) };
-            if (twitchLeft && _leftEarRotate != null) _leftEarRotate.BeginAnimation(RotateTransform.AngleProperty, twitchAnim);
-            else if (!twitchLeft && _rightEarRotate != null) _rightEarRotate.BeginAnimation(RotateTransform.AngleProperty, twitchAnim);
+            try
+            {
+                if (_state == PetState.Sleeping) return;
+                bool twitchLeft = _random.Next(2) == 0;
+                DoubleAnimation twitchAnim = new DoubleAnimation { From = 0, To = twitchLeft ? -15 : 15, Duration = TimeSpan.FromMilliseconds(120), AutoReverse = true, RepeatBehavior = new RepeatBehavior(2) };
+                if (twitchLeft && _leftEarRotate != null) _leftEarRotate.BeginAnimation(RotateTransform.AngleProperty, twitchAnim);
+                else if (!twitchLeft && _rightEarRotate != null) _rightEarRotate.BeginAnimation(RotateTransform.AngleProperty, twitchAnim);
+            }
+            catch (Exception ex)
+            {
+                Log("Error in DoEarTwitch: " + ex.Message);
+            }
         }
 
         private void DecideNextAction()
         {
-            if (_isCelebrating || _isDragging) return;
-            if (_isOverdue)
+            try
             {
-                WanderAcrossScreen(isFast: true);
-                return;
+                if (_isCelebrating || _isDragging) return;
+                if (_isOverdue)
+                {
+                    WanderAcrossScreen(isFast: true);
+                    return;
+                }
+                int action = _random.Next(10);
+                if (action < 6) WanderAcrossScreen(isFast: false);
+                else if (action < 8) DoHappyHops();
+                else SetPetState(PetState.Idle);
             }
-            int action = _random.Next(10);
-            if (action < 6) WanderAcrossScreen(isFast: false);
-            else if (action < 8) DoHappyHops();
-            else SetPetState(PetState.Idle);
+            catch (Exception ex)
+            {
+                Log("Error in DecideNextAction: " + ex.Message);
+            }
         }
 
         private void WanderAcrossScreen(bool isFast)
         {
-            SetPetState(PetState.Walking);
-            double screenWidth = SystemParameters.WorkArea.Width;
-            double nextX = 50 + _random.NextDouble() * (screenWidth - 380);
-
-            _facingRight = nextX > Left;
-            _flipTransform.ScaleX = _facingRight ? 1 : -1;
-
-            double durationSec = isFast ? 1.6 : 2.8;
-            DoubleAnimation moveAnim = new DoubleAnimation { To = nextX, Duration = TimeSpan.FromSeconds(durationSec), EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut } };
-            moveAnim.Completed += (s, e) => SetPetState(PetState.Idle);
-
-            // Ghostly floating or walking bounce
-            int stepCount = (int)(durationSec * 4.5);
-            DoubleAnimation bounceAnim = new DoubleAnimation
+            try
             {
-                From = 0,
-                To = _petType == "reaper" ? -18 : (isFast ? -14 : -9),
-                Duration = TimeSpan.FromMilliseconds(_petType == "reaper" ? 450 : 220),
-                AutoReverse = true,
-                RepeatBehavior = new RepeatBehavior(_petType == "reaper" ? stepCount / 2 : stepCount),
-                EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut }
-            };
-            _bounceTransform.BeginAnimation(TranslateTransform.YProperty, bounceAnim);
+                SetPetState(PetState.Walking);
+                double screenWidth = SystemParameters.WorkArea.Width;
+                double nextX = 50 + _random.NextDouble() * (screenWidth - 380);
 
-            if (_leftPawY != null && _rightPawY != null)
-            {
-                DoubleAnimation pawAnim1 = new DoubleAnimation { From = 0, To = -6, Duration = TimeSpan.FromMilliseconds(220), AutoReverse = true, RepeatBehavior = new RepeatBehavior(stepCount) };
-                DoubleAnimation pawAnim2 = new DoubleAnimation { From = -6, To = 0, Duration = TimeSpan.FromMilliseconds(220), AutoReverse = true, RepeatBehavior = new RepeatBehavior(stepCount) };
-                _leftPawY.BeginAnimation(TranslateTransform.YProperty, pawAnim1);
-                _rightPawY.BeginAnimation(TranslateTransform.YProperty, pawAnim2);
+                _facingRight = nextX > Left;
+                _flipTransform.ScaleX = _facingRight ? -1 : 1;
+                Log(string.Format("Wander: Left={0:0}, nextX={1:0}, facingRight={2}, ScaleX={3}", Left, nextX, _facingRight, _flipTransform.ScaleX));
+
+                double durationSec = isFast ? 1.6 : 2.8;
+                DoubleAnimation moveAnim = new DoubleAnimation { To = nextX, Duration = TimeSpan.FromSeconds(durationSec), EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut } };
+                moveAnim.Completed += (s, e) => SetPetState(PetState.Idle);
+
+                // Ghostly floating or walking bounce
+                int stepCount = Math.Max(2, (int)(durationSec * 4.5));
+                int repeatCount = _petType == "reaper" ? Math.Max(1, stepCount / 2) : stepCount;
+                DoubleAnimation bounceAnim = new DoubleAnimation
+                {
+                    From = 0,
+                    To = _petType == "reaper" ? -18 : (isFast ? -14 : -9),
+                    Duration = TimeSpan.FromMilliseconds(_petType == "reaper" ? 450 : 220),
+                    AutoReverse = true,
+                    RepeatBehavior = new RepeatBehavior(repeatCount),
+                    EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut }
+                };
+                _bounceTransform.BeginAnimation(TranslateTransform.YProperty, bounceAnim);
+
+                if (_leftPawY != null && _rightPawY != null)
+                {
+                    DoubleAnimation pawAnim1 = new DoubleAnimation { From = 0, To = -6, Duration = TimeSpan.FromMilliseconds(220), AutoReverse = true, RepeatBehavior = new RepeatBehavior(stepCount) };
+                    DoubleAnimation pawAnim2 = new DoubleAnimation { From = -6, To = 0, Duration = TimeSpan.FromMilliseconds(220), AutoReverse = true, RepeatBehavior = new RepeatBehavior(stepCount) };
+                    _leftPawY.BeginAnimation(TranslateTransform.YProperty, pawAnim1);
+                    _rightPawY.BeginAnimation(TranslateTransform.YProperty, pawAnim2);
+                }
+
+                BeginAnimation(Window.LeftProperty, moveAnim);
             }
-
-            BeginAnimation(Window.LeftProperty, moveAnim);
+            catch (Exception ex)
+            {
+                Log("Error in WanderAcrossScreen: " + ex.Message);
+            }
         }
 
         private void DoHappyHops()
         {
-            SetPetState(PetState.Happy);
-            DoubleAnimation hopAnim = new DoubleAnimation { From = 0, To = -20, Duration = TimeSpan.FromMilliseconds(200), AutoReverse = true, RepeatBehavior = new RepeatBehavior(3), EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut } };
-            hopAnim.Completed += (s, e) => SetPetState(PetState.Idle);
-            _bounceTransform.BeginAnimation(TranslateTransform.YProperty, hopAnim);
-            SpawnParticle(160, 160);
+            try
+            {
+                SetPetState(PetState.Happy);
+                DoubleAnimation hopAnim = new DoubleAnimation { From = 0, To = -20, Duration = TimeSpan.FromMilliseconds(200), AutoReverse = true, RepeatBehavior = new RepeatBehavior(3), EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut } };
+                hopAnim.Completed += (s, e) => SetPetState(PetState.Idle);
+                _bounceTransform.BeginAnimation(TranslateTransform.YProperty, hopAnim);
+                SpawnParticle(160, 160);
+            }
+            catch (Exception ex)
+            {
+                Log("Error in DoHappyHops: " + ex.Message);
+            }
         }
 
         private void SetPetState(PetState newState)
@@ -1273,44 +1357,58 @@ namespace NoteProDesktopPet
 
         private void CycleSpeechText()
         {
-            string[] normalList = _petType == "reaper" ? _reaperPhrasesNormal
-                                : (_petType == "cat" ? _catPhrasesNormal
-                                : (_petType == "anime" ? _animePhrasesNormal : _dogPhrasesNormal));
-            string[] panicList = _petType == "reaper" ? _reaperPhrasesPanic
-                               : (_petType == "cat" ? _catPhrasesPanic
-                               : (_petType == "anime" ? _animePhrasesPanic : _dogPhrasesPanic));
+            try
+            {
+                string[] normalList = _petType == "reaper" ? _reaperPhrasesNormal
+                                    : (_petType == "cat" ? _catPhrasesNormal
+                                    : (_petType == "anime" ? _animePhrasesNormal : _dogPhrasesNormal));
+                string[] panicList = _petType == "reaper" ? _reaperPhrasesPanic
+                                   : (_petType == "cat" ? _catPhrasesPanic
+                                   : (_petType == "anime" ? _animePhrasesPanic : _dogPhrasesPanic));
 
-            if (_isOverdue)
-            {
-                _speechIndex = (_speechIndex + 1) % panicList.Length;
-                _txtMessage.Text = panicList[_speechIndex];
+                if (_isOverdue)
+                {
+                    _speechIndex = (_speechIndex + 1) % panicList.Length;
+                    _txtMessage.Text = panicList[_speechIndex];
+                }
+                else
+                {
+                    _speechIndex = (_speechIndex + 1) % normalList.Length;
+                    _txtMessage.Text = normalList[_speechIndex];
+                }
             }
-            else
+            catch (Exception ex)
             {
-                _speechIndex = (_speechIndex + 1) % normalList.Length;
-                _txtMessage.Text = normalList[_speechIndex];
+                Log("Error in CycleSpeechText: " + ex.Message);
             }
         }
 
         private void SpawnParticle(double startX, double startY)
         {
-            string icon = "💖";
-            if (_petType == "dog") icon = _random.Next(2) == 0 ? "🦴" : "🐾";
-            else if (_petType == "cat") icon = _random.Next(2) == 0 ? "🐾" : "💖";
-            else if (_petType == "anime") icon = _random.Next(2) == 0 ? "🌸" : "✨";
-            else if (_petType == "reaper") icon = _random.Next(3) == 0 ? "💀" : (_random.Next(2) == 0 ? "👻" : "⏳");
+            try
+            {
+                string icon = "💖";
+                if (_petType == "dog") icon = _random.Next(2) == 0 ? "🦴" : "🐾";
+                else if (_petType == "cat") icon = _random.Next(2) == 0 ? "🐾" : "💖";
+                else if (_petType == "anime") icon = _random.Next(2) == 0 ? "🌸" : "✨";
+                else if (_petType == "reaper") icon = _random.Next(3) == 0 ? "💀" : (_random.Next(2) == 0 ? "👻" : "⏳");
 
-            TextBlock p = new TextBlock { Text = icon, FontSize = 18 };
-            Canvas.SetLeft(p, startX + _random.Next(-25, 25));
-            Canvas.SetTop(p, startY);
-            _fxCanvas.Children.Add(p);
+                TextBlock p = new TextBlock { Text = icon, FontSize = 18 };
+                Canvas.SetLeft(p, startX + _random.Next(-25, 25));
+                Canvas.SetTop(p, startY);
+                _fxCanvas.Children.Add(p);
 
-            DoubleAnimation floatUp = new DoubleAnimation { From = startY, To = startY - 50, Duration = TimeSpan.FromSeconds(1.2), EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut } };
-            DoubleAnimation fadeOut = new DoubleAnimation { From = 1.0, To = 0.0, Duration = TimeSpan.FromSeconds(1.2) };
-            floatUp.Completed += (s, e) => _fxCanvas.Children.Remove(p);
+                DoubleAnimation floatUp = new DoubleAnimation { From = startY, To = startY - 50, Duration = TimeSpan.FromSeconds(1.2), EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut } };
+                DoubleAnimation fadeOut = new DoubleAnimation { From = 1.0, To = 0.0, Duration = TimeSpan.FromSeconds(1.2) };
+                floatUp.Completed += (s, e) => _fxCanvas.Children.Remove(p);
 
-            p.BeginAnimation(Canvas.TopProperty, floatUp);
-            p.BeginAnimation(UIElement.OpacityProperty, fadeOut);
+                p.BeginAnimation(Canvas.TopProperty, floatUp);
+                p.BeginAnimation(UIElement.OpacityProperty, fadeOut);
+            }
+            catch (Exception ex)
+            {
+                Log("Error in SpawnParticle: " + ex.Message);
+            }
         }
 
         private void SyncFromStateFile()
@@ -1318,15 +1416,23 @@ namespace NoteProDesktopPet
             try
             {
                 if (!File.Exists(_statePath)) return;
-                string json = File.ReadAllText(_statePath);
+                string json = "";
+                using (var fs = new FileStream(_statePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                using (var sr = new StreamReader(fs))
+                {
+                    json = sr.ReadToEnd();
+                }
                 if (string.IsNullOrEmpty(json)) return;
 
-                bool hasPending = json.Contains("\"hasPending\":true") || json.Contains("\"hasPending\": true");
-                if (!hasPending && !_isCelebrating)
+                bool isExplicitlyDisabled = json.Contains("\"isPetEnabled\":false") || json.Contains("\"isPetEnabled\": false");
+                if (isExplicitlyDisabled && !_isCelebrating)
                 {
+                    Log("SyncFromStateFile: pet is disabled in settings, closing window.");
                     Close();
                     return;
                 }
+
+                bool hasPending = json.Contains("\"hasPending\":true") || json.Contains("\"hasPending\": true");
 
                 // Check petType sync from NotePro
                 int petTypeIdx = json.IndexOf("\"petType\":");
@@ -1345,6 +1451,40 @@ namespace NoteProDesktopPet
                         }
                     }
                 }
+
+                if (!hasPending)
+                {
+                    if (_btnComplete != null) _btnComplete.Visibility = Visibility.Collapsed;
+                    _speechBubble.BorderBrush = new SolidColorBrush(Color.FromRgb(99, 102, 241));
+
+                    if (_petType == "dog")
+                    {
+                        _txtTitle.Text = "🐶 BẠN ĐỒNG HÀNH SHIBA";
+                        _txtTitle.Foreground = new SolidColorBrush(Color.FromRgb(245, 158, 11));
+                        _txtTask.Text = "Không có deadline nào cả! Bạn cứ thảnh thơi làm việc nha! 🐾";
+                    }
+                    else if (_petType == "cat")
+                    {
+                        _txtTitle.Text = "🐱 BÉ MÈO KAWAII";
+                        _txtTitle.Foreground = new SolidColorBrush(Color.FromRgb(236, 72, 153));
+                        _txtTask.Text = "Meo meo~ Công việc hôm nay đều ổn thỏa rồi, Senpai yên tâm nha! 💖";
+                    }
+                    else if (_petType == "anime")
+                    {
+                        _txtTitle.Text = "🌸 TRỢ LÝ WAIFU CHIBI";
+                        _txtTitle.Foreground = new SolidColorBrush(Color.FromRgb(139, 92, 246));
+                        _txtTask.Text = "Senpai ơi, không có việc gấp đâu ạ! Chúc Senpai một ngày vui vẻ! ✨";
+                    }
+                    else
+                    {
+                        _txtTitle.Text = "💀 THẦN CHẾT CHIBI";
+                        _txtTitle.Foreground = new SolidColorBrush(Color.FromRgb(34, 211, 238));
+                        _txtTask.Text = "Chưa có hạn chót nào cần gặt... Ta đang canh gác màn hình cho ngươi đấy! 👻";
+                    }
+                    return;
+                }
+
+                if (_btnComplete != null) _btnComplete.Visibility = Visibility.Visible;
 
                 // Title
                 int titleIdx = json.IndexOf("\"title\":");
@@ -1377,6 +1517,12 @@ namespace NoteProDesktopPet
                     _txtTitle.Text = _petType == "reaper" ? "🚨 TỬ THẦN ĐẾN ĐÒI DEADLINE!" : "🚨 DEADLINE ĐÃ QUÁ HẠN RỒI!";
                     _txtTitle.Foreground = Brushes.Red;
                     _speechBubble.BorderBrush = Brushes.Red;
+                }
+                else
+                {
+                    _txtTitle.Text = _petType == "reaper" ? "⚡ THẦN CHẾT ĐÒI HẠN CHÓT!" : "⏰ HẠN CHÓT CẦN LÀM!";
+                    _txtTitle.Foreground = new SolidColorBrush(Color.FromRgb(245, 158, 11));
+                    _speechBubble.BorderBrush = new SolidColorBrush(Color.FromRgb(245, 158, 11));
                 }
             }
             catch { }
@@ -1552,11 +1698,24 @@ namespace NoteProDesktopPet
                     }
                 }
 
-                string exePath = @"F:\NotePro\build\windows\x64\runner\Debug\notepro.exe";
-                if (!File.Exists(exePath)) exePath = @"F:\NotePro\build\windows\x64\runner\Release\notepro.exe";
-                if (File.Exists(exePath))
+                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                string[] candidates = new string[]
                 {
-                    Process.Start(exePath);
+                    System.IO.Path.Combine(baseDir, "notepro.exe"),
+                    System.IO.Path.Combine(baseDir, "..", "notepro.exe"),
+                    System.IO.Path.Combine(baseDir, "..", "build", "windows", "x64", "runner", "Debug", "notepro.exe"),
+                    System.IO.Path.Combine(baseDir, "..", "build", "windows", "x64", "runner", "Release", "notepro.exe"),
+                    @"D:\NotePro\build\windows\x64\runner\Debug\notepro.exe",
+                    @"D:\NotePro\build\windows\x64\runner\Release\notepro.exe"
+                };
+
+                foreach (string candidate in candidates)
+                {
+                    if (File.Exists(candidate))
+                    {
+                        Process.Start(candidate);
+                        break;
+                    }
                 }
             }
             catch { }
@@ -1567,18 +1726,53 @@ namespace NoteProDesktopPet
 
         private static System.Threading.Mutex _mutex;
 
+        public static void Log(string msg)
+        {
+            try
+            {
+                string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                string p = System.IO.Path.Combine(appData, "com.example", "notepro", "NoteProData", "pet_debug.log");
+                System.IO.File.AppendAllText(p, DateTime.Now.ToString("HH:mm:ss.fff") + " " + msg + Environment.NewLine);
+            }
+            catch { }
+        }
+
         [STAThread]
         public static void Main()
         {
-            bool createdNew;
-            _mutex = new System.Threading.Mutex(true, "NotePro_DesktopPet_SingleInstance_Mutex", out createdNew);
-            if (!createdNew)
+            Log("=== DesktopPet starting ===");
+            try
             {
-                return;
-            }
+                AppDomain.CurrentDomain.UnhandledException += (s, e) =>
+                {
+                    Log("AppDomain UnhandledException: " + (e.ExceptionObject != null ? e.ExceptionObject.ToString() : "null"));
+                };
 
-            Application app = new Application();
-            app.Run(new PetWindow());
+                bool createdNew;
+                _mutex = new System.Threading.Mutex(true, "NotePro_DesktopPet_SingleInstance_Mutex", out createdNew);
+                Log("Mutex createdNew: " + createdNew);
+                if (!createdNew)
+                {
+                    Log("Mutex already held, exiting.");
+                    return;
+                }
+
+                Application app = new Application();
+                app.DispatcherUnhandledException += (s, e) =>
+                {
+                    Log("DispatcherUnhandledException: " + e.Exception.ToString());
+                    e.Handled = true;
+                };
+
+                var win = new PetWindow();
+                Log("PetWindow instantiated. Running app...");
+                app.Run(win);
+                Log("app.Run exited.");
+            }
+            catch (Exception ex)
+            {
+                Log("Exception in Main: " + ex.ToString());
+            }
         }
     }
 }

@@ -93,6 +93,20 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
               Expanded(
                 child: Row(
                   children: [
+                    if (isDesktop) ...[
+                      IconButton(
+                        icon: Icon(
+                          notesProvider.isSidebarVisible ? Icons.menu_open_rounded : Icons.menu_rounded,
+                          size: 22,
+                          color: isDark ? Colors.grey.shade300 : const Color(0xFF1E293B),
+                        ),
+                        tooltip: notesProvider.isSidebarVisible ? 'Thu gọn thanh bên (Ctrl+B)' : 'Mở rộng thanh bên (Ctrl+B)',
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                        onPressed: () => notesProvider.toggleSidebar(),
+                      ),
+                      const SizedBox(width: 4),
+                    ],
                     Icon(
                       currentIcon,
                       size: 20,

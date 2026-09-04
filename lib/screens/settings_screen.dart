@@ -562,6 +562,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       const SizedBox(height: 14),
                       _HotkeyRow(keys: 'Ctrl + N', desc: 'Viết ghi chú mới'),
+                      _HotkeyRow(keys: 'Ctrl + B', desc: 'Ẩn / Hiện thanh bên (Sidebar)'),
                       _HotkeyRow(keys: 'Ctrl + S', desc: 'Lưu ghi chú nhanh'),
                       _HotkeyRow(keys: 'Ctrl + F', desc: 'Tìm kiếm nhanh'),
                       _HotkeyRow(keys: 'Esc', desc: 'Đóng cửa sổ / Thoát tìm kiếm'),

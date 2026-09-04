@@ -54,7 +54,8 @@ $gFinal.ResetClip()
 $gFinal.Dispose()
 
 # Save transparent PNG
-$finalBmp.Save("f:\NotePro\assets\app_logo.png", [System.Drawing.Imaging.ImageFormat]::Png)
+$outPng = Join-Path $PSScriptRoot "assets\app_logo.png"
+$finalBmp.Save($outPng, [System.Drawing.Imaging.ImageFormat]::Png)
 
 # Create Windows multi-res ICO format
 # Write ICO header & directory entries for PNG-compressed ICO (standard Windows Vista/7/10/11 format)
@@ -78,7 +79,8 @@ foreach ($s in $sizes) {
     $subBmp.Dispose()
 }
 
-$icoFs = New-Object System.IO.FileStream("f:\NotePro\windows\runner\resources\app_icon.ico", [System.IO.FileMode]::Create)
+$outIco = Join-Path $PSScriptRoot "windows\runner\resources\app_icon.ico"
+$icoFs = New-Object System.IO.FileStream($outIco, [System.IO.FileMode]::Create)
 $bw = New-Object System.IO.BinaryWriter($icoFs)
 
 # ICONDIR Header

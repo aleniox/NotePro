@@ -128,6 +128,7 @@ class DesktopPetService {
 
       final stateMap = {
         'hasPending': isPetEnabled && pendingDeadlines.isNotEmpty,
+        'isPetEnabled': isPetEnabled,
         'petType': _petType,
         'deadlines': listData,
         'updatedAt': DateTime.now().toIso8601String(),
@@ -135,9 +136,13 @@ class DesktopPetService {
 
       await stateFile.writeAsString(json.encode(stateMap));
 
-      // If enabled and has pending deadlines, launch desktop pet process if not already running
-      if (isPetEnabled && pendingDeadlines.isNotEmpty) {
+      // If enabled, launch desktop pet process if not already running
+      if (isPetEnabled) {
         await _ensurePetRunning();
+      } else {
+        try {
+          Process.run('taskkill', ['/F', '/IM', 'DesktopPet.exe']);
+        } catch (_) {}
       }
     } catch (_) {}
   }
@@ -153,17 +158,34 @@ class DesktopPetService {
         return; // Already active on desktop!
       }
 
-      final currentExeDir = File(Platform.resolvedExecutable).parent.path;
-      String petExePath = p.join(currentExeDir, 'desktop_pet', 'DesktopPet.exe');
-      if (!await File(petExePath).exists()) {
-        petExePath = p.join(currentExeDir, 'DesktopPet.exe');
+      final resolvedDir = File(Platform.resolvedExecutable).parent;
+      final candidatePaths = <String>[];
+
+      // Walk up directory tree from resolvedExecutable (up to 7 levels)
+      Directory curr = resolvedDir;
+      for (int i = 0; i < 7; i++) {
+        candidatePaths.add(p.join(curr.path, 'desktop_pet', 'DesktopPet.exe'));
+        candidatePaths.add(p.join(curr.path, 'DesktopPet.exe'));
+        if (curr.parent.path == curr.path) break;
+        curr = curr.parent;
       }
-      if (!await File(petExePath).exists()) {
-        petExePath = r'F:\NotePro\desktop_pet\DesktopPet.exe';
+      candidatePaths.add(p.join(Directory.current.path, 'desktop_pet', 'DesktopPet.exe'));
+      candidatePaths.add(p.join(Directory.current.path, 'DesktopPet.exe'));
+
+      String? petExePath;
+      for (final candidate in candidatePaths) {
+        if (await File(candidate).exists()) {
+          petExePath = candidate;
+          break;
+        }
       }
 
-      if (await File(petExePath).exists()) {
-        _petProcess = await Process.start(petExePath, []);
+      if (petExePath != null) {
+        _petProcess = await Process.start(
+          petExePath,
+          [],
+          mode: ProcessStartMode.detached,
+        );
       }
     } catch (_) {
     } finally {

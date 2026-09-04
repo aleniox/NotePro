@@ -25,22 +25,26 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final notesProvider = Provider.of<NotesProvider>(context);
     final screenWidth = MediaQuery.of(context).size.width;
     final isDesktop = screenWidth >= 800;
 
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.keyN, control: true): () => _openNewNote(context),
+        const SingleActivator(LogicalKeyboardKey.keyB, control: true): () => notesProvider.toggleSidebar(),
       },
       child: Focus(
         autofocus: true,
         child: Scaffold(
+          drawer: isDesktop ? null : const AdaptiveSidebar(isDrawer: true),
           body: Stack(
             children: [
               Row(
                 children: [
-                  // Persistent Sidebar on Desktop
-                  if (isDesktop) const AdaptiveSidebar(isDrawer: false),
+                  // Collapsible Sidebar on Desktop
+                  if (isDesktop && notesProvider.isSidebarVisible)
+                    const AdaptiveSidebar(isDrawer: false),
 
                   // Main Area
                   Expanded(
@@ -49,6 +53,13 @@ class HomeScreen extends StatelessWidget {
                         // Top App Bar for Mobile or Search Bar for Desktop
                         if (!isDesktop)
                           AppBar(
+                            leading: Builder(
+                              builder: (ctx) => IconButton(
+                                icon: const Icon(Icons.menu_rounded),
+                                tooltip: 'Mở menu danh mục & cài đặt',
+                                onPressed: () => Scaffold.of(ctx).openDrawer(),
+                              ),
+                            ),
                             title: const Row(
                               children: [
                                 Icon(Icons.sticky_note_2_rounded, color: Color(0xFF6366F1), size: 22),
@@ -132,7 +143,8 @@ class HomeScreen extends StatelessWidget {
                               }
 
                               // Default: Masonry Grid View
-                              final availableWidth = isDesktop ? screenWidth - 260 : screenWidth;
+                              final sidebarWidth = (isDesktop && notesProvider.isSidebarVisible) ? 260.0 : 0.0;
+                              final availableWidth = screenWidth - sidebarWidth;
                               int columns = (availableWidth / 260).floor().clamp(1, 6);
 
                               return CustomScrollView(
@@ -189,6 +201,9 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ],
               ),
+
+              // Floating wandering pet assistant when deadlines exist
+              const WanderingPetWidget(),
             ],
           ),
           floatingActionButton: FloatingActionButton.extended(

@@ -1,8 +1,8 @@
 Add-Type -AssemblyName System.Drawing
 
-$srcPath = "f:\NotePro\assets\app_logo.png"
+$srcPath = Join-Path $PSScriptRoot "assets\app_logo.png"
 if (-not (Test-Path $srcPath)) {
-    Write-Error "Source image f:\NotePro\assets\app_logo.png not found"
+    Write-Error "Source image $srcPath not found"
     exit 1
 }
 
@@ -29,7 +29,8 @@ foreach ($s in $sizes) {
     $subBmp.Dispose()
 }
 
-$icoFs = New-Object System.IO.FileStream("f:\NotePro\windows\runner\resources\app_icon.ico", [System.IO.FileMode]::Create)
+$outIco = Join-Path $PSScriptRoot "windows\runner\resources\app_icon.ico"
+$icoFs = New-Object System.IO.FileStream($outIco, [System.IO.FileMode]::Create)
 $bw = New-Object System.IO.BinaryWriter($icoFs)
 
 # ICONDIR Header
