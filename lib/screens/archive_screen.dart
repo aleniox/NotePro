@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:provider/provider.dart';
 
+import '../core/utils/app_snackbar.dart';
 import '../providers/notes_provider.dart';
 import '../widgets/note_card_widget.dart';
 
@@ -53,9 +54,7 @@ class ArchiveScreen extends StatelessWidget {
                           tooltip: 'Khôi phục về trang chính',
                           onPressed: () {
                             notesProvider.toggleArchive(note);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Đã chuyển ghi chú về trang chính')),
-                            );
+                            AppSnackBar.showInfo(context, 'Đã chuyển ghi chú về trang chính');
                           },
                         ),
                       ),

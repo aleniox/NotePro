@@ -3,6 +3,7 @@ import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:provider/provider.dart';
 
 import '../core/theme/card_colors.dart';
+import '../core/utils/app_snackbar.dart';
 import '../providers/notes_provider.dart';
 
 class TrashScreen extends StatelessWidget {
@@ -24,9 +25,7 @@ class TrashScreen extends StatelessWidget {
             onPressed: () {
               Provider.of<NotesProvider>(context, listen: false).emptyTrash();
               Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Đã dọn sạch thùng rác')),
-              );
+              AppSnackBar.showTrash(context, 'Đã dọn sạch thùng rác');
             },
             child: const Text('Xóa tất cả'),
           ),
@@ -121,9 +120,7 @@ class TrashScreen extends StatelessWidget {
                               label: const Text('Khôi phục'),
                               onPressed: () {
                                 notesProvider.restoreFromTrash(note);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Đã khôi phục ghi chú')),
-                                );
+                                AppSnackBar.showSuccess(context, 'Đã khôi phục ghi chú');
                               },
                             ),
                             const SizedBox(width: 4),
@@ -132,9 +129,7 @@ class TrashScreen extends StatelessWidget {
                               tooltip: 'Xóa vĩnh viễn',
                               onPressed: () {
                                 notesProvider.deletePermanently(note.id);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Đã xóa vĩnh viễn ghi chú')),
-                                );
+                                AppSnackBar.showTrash(context, 'Đã xóa vĩnh viễn ghi chú');
                               },
                             ),
                           ],

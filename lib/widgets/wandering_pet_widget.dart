@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../core/utils/app_snackbar.dart';
 import '../models/note_model.dart';
 import '../providers/notes_provider.dart';
 import '../screens/note_editor_screen.dart';
@@ -94,17 +95,9 @@ class _WanderingPetWidgetState extends State<WanderingPetWidget>
     await notesProvider.toggleDeadlineCompleted(note);
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.star_rounded, color: Colors.amber),
-              const SizedBox(width: 8),
-              Text('Tuyệt vời! Đã hoàn thành "${note.title.isEmpty ? 'ghi chú' : note.title}"'),
-            ],
-          ),
-          backgroundColor: const Color(0xFF10B981),
-        ),
+      AppSnackBar.showSuccess(
+        context,
+        'Tuyệt vời! Đã hoàn thành "${note.title.isEmpty ? 'ghi chú' : note.title}"',
       );
     }
 

@@ -10,6 +10,7 @@ import 'core/utils/system_tray_service.dart';
 import 'providers/notes_provider.dart';
 import 'providers/theme_provider.dart';
 import 'screens/home_screen.dart';
+import 'widgets/pet_notification_overlay.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -68,6 +69,11 @@ class NoteCardsApp extends StatelessWidget {
       darkTheme: AppTheme.darkTheme,
       themeMode: themeProvider.themeMode,
       scrollBehavior: const AppScrollBehavior(),
+      builder: (context, child) {
+        return PetNotificationOverlay(
+          child: child ?? const SizedBox(),
+        );
+      },
       home: const HomeScreen(),
     );
   }

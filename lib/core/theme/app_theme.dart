@@ -64,19 +64,21 @@ class AppTheme {
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
       showCloseIcon: true,
+      width: 420,
       backgroundColor: const Color(0xFF1E293B),
       contentTextStyle: const TextStyle(
         color: Colors.white,
         fontSize: 13.5,
         fontWeight: FontWeight.w500,
+        letterSpacing: 0.1,
       ),
       closeIconColor: Colors.white70,
       actionTextColor: primaryAccent,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: Color(0xFF334155), width: 1),
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: Color(0xFF334155), width: 1.2),
       ),
-      elevation: 6,
+      elevation: 10,
     ),
     scrollbarTheme: ScrollbarThemeData(
       thumbVisibility: const WidgetStatePropertyAll(true),
@@ -153,19 +155,21 @@ class AppTheme {
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
       showCloseIcon: true,
+      width: 420,
       backgroundColor: const Color(0xFF1E293B),
       contentTextStyle: const TextStyle(
         color: Color(0xFFF8FAFC),
         fontSize: 13.5,
         fontWeight: FontWeight.w500,
+        letterSpacing: 0.1,
       ),
       closeIconColor: Colors.grey.shade400,
       actionTextColor: primaryAccent,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: Color(0xFF334155), width: 1),
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: Color(0xFF334155), width: 1.2),
       ),
-      elevation: 6,
+      elevation: 10,
     ),
     scrollbarTheme: ScrollbarThemeData(
       thumbVisibility: const WidgetStatePropertyAll(true),

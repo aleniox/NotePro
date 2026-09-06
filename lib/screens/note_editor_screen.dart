@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
 import '../core/theme/card_colors.dart';
+import '../core/utils/app_snackbar.dart';
 import '../core/utils/file_helper.dart';
 import '../models/checklist_item.dart';
 import '../models/note_model.dart';
@@ -38,6 +39,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> with SingleTickerPr
   late DateTime _createdAt;
   DateTime? _reminderDateTime;
   bool _isCompleted = false;
+  bool _isDeleted = false;
 
   bool _showPreview = false;
   late TabController _tabController;
@@ -99,6 +101,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> with SingleTickerPr
   }
 
   void _saveNote() {
+    if (_isDeleted) return;
     final title = _titleController.text.trim();
     final content = _contentController.text.trim();
 
@@ -183,9 +186,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> with SingleTickerPr
         _isLocked = false;
         _pinCode = null;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã bỏ khóa ghi chú')),
-      );
+      AppSnackBar.showInfo(context, 'Đã bỏ khóa ghi chú');
       return;
     }
 
@@ -230,9 +231,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> with SingleTickerPr
                   _pinCode = pinCtrl.text.trim();
                 });
                 Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Đã khóa ghi chú thành công')),
-                );
+                AppSnackBar.showSuccess(context, 'Đã khóa ghi chú thành công');
               }
             },
             child: const Text('Khóa thẻ'),
@@ -282,16 +281,14 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> with SingleTickerPr
       _isCompleted = false;
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Đã đặt hạn chót: ${pickedTime.format(context)} ngày ${pickedDate.day}/${pickedDate.month}/${pickedDate.year}',
-        ),
-        action: SnackBarAction(
-          label: 'Xóa hạn',
-          onPressed: () => setState(() => _reminderDateTime = null),
-        ),
-      ),
+    AppSnackBar.show(
+      context,
+      title: '⏰ Bé Pet Đã Ghi Nhớ!',
+      message: 'Đã đặt hạn chót: ${pickedTime.format(context)} ngày ${pickedDate.day}/${pickedDate.month}/${pickedDate.year}',
+      icon: Icons.alarm_on_rounded,
+      iconColor: const Color(0xFF6366F1),
+      actionLabel: 'Xóa hạn',
+      onAction: () => setState(() => _reminderDateTime = null),
     );
   }
 
@@ -318,9 +315,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> with SingleTickerPr
         bindings: {
           const SingleActivator(LogicalKeyboardKey.keyS, control: true): () {
             _saveNote();
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Đã lưu ghi chú!'), duration: Duration(seconds: 1)),
-            );
+            AppSnackBar.showSuccess(context, 'Đã lưu ghi chú!');
           },
         },
         child: Focus(
@@ -413,9 +408,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> with SingleTickerPr
                     );
                     final path = await FileHelper.exportNoteToMarkdown(currentNote);
                     if (path != null && context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Đã xuất: $path')),
-                      );
+                      AppSnackBar.showSuccess(context, 'Đã xuất: $path');
                     }
                   },
                 ),
@@ -437,14 +430,14 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> with SingleTickerPr
                             ),
                             FilledButton(
                               style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
-                              onPressed: () {
+                              onPressed: () async {
+                                _isDeleted = true;
                                 final provider = Provider.of<NotesProvider>(context, listen: false);
-                                provider.moveToTrash(widget.note!);
+                                await provider.moveToTrash(widget.note!);
+                                if (!context.mounted) return;
                                 Navigator.pop(ctx); // Close dialog
                                 Navigator.pop(context); // Close editor
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Đã chuyển ghi chú vào Thùng rác')),
-                                );
+                                AppSnackBar.showTrash(context, 'Đã chuyển ghi chú vào Thùng rác');
                               },
                               child: const Text('Xóa'),
                             ),
@@ -711,6 +704,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> with SingleTickerPr
   }
 
   Widget _buildEditorAndChecklist(Color textColor, Color cardBorder) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return ListView(
       children: [
         // Interactive Checklist Section
@@ -769,22 +763,31 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> with SingleTickerPr
         ],
 
         // Add Checklist Item Input Bar
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6),
+        Container(
+          margin: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          decoration: BoxDecoration(
+            color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.08),
+            ),
+          ),
           child: Row(
             children: [
-              Icon(Icons.add_task, size: 18, color: textColor.withOpacity(0.6)),
-              const SizedBox(width: 8),
+              Icon(Icons.add_task_rounded, size: 20, color: Theme.of(context).colorScheme.primary),
+              const SizedBox(width: 10),
               Expanded(
                 child: TextField(
                   controller: _checklistInputController,
+                  onChanged: (_) => setState(() {}),
                   onSubmitted: (_) => _addChecklistItem(),
-                  style: TextStyle(fontSize: 13.5, color: textColor),
+                  style: TextStyle(fontSize: 14, color: textColor),
                   decoration: InputDecoration(
-                    hintText: 'Thêm mục cần làm (Enter để thêm)...',
-                    hintStyle: TextStyle(fontSize: 13.5, color: textColor.withOpacity(0.5)),
+                    hintText: 'Nhập việc cần làm rồi ấn Enter hoặc bấm Thêm...',
+                    hintStyle: TextStyle(fontSize: 13.5, color: textColor.withOpacity(0.45)),
                     isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 10),
                     border: InputBorder.none,
                     enabledBorder: InputBorder.none,
                     focusedBorder: InputBorder.none,
@@ -792,11 +795,19 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> with SingleTickerPr
                   ),
                 ),
               ),
-              if (_checklistInputController.text.isNotEmpty)
-                IconButton(
-                  icon: const Icon(Icons.add_circle, color: Colors.indigo),
-                  onPressed: _addChecklistItem,
+              const SizedBox(width: 6),
+              FilledButton.icon(
+                onPressed: _checklistInputController.text.trim().isNotEmpty
+                    ? _addChecklistItem
+                    : null,
+                icon: const Icon(Icons.add_rounded, size: 16),
+                label: const Text('Thêm', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                  minimumSize: const Size(0, 34),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
+              ),
             ],
           ),
         ),

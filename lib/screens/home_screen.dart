@@ -214,11 +214,6 @@ class HomeScreen extends StatelessWidget {
               const WanderingPetWidget(),
             ],
           ),
-          floatingActionButton: FloatingActionButton.extended(
-            onPressed: () => _openNewNote(context),
-            icon: const Icon(Icons.add_rounded),
-            label: const Text('Thẻ mới', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
         ),
       ),
     );

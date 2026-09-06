@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../core/theme/card_colors.dart';
+import '../core/utils/app_snackbar.dart';
 import '../models/note_model.dart';
 import '../providers/notes_provider.dart';
 import '../screens/note_editor_screen.dart';
@@ -66,20 +67,42 @@ class _CalendarViewState extends State<CalendarView> {
       case DateTime.saturday:
         return 'Thứ Bảy';
       case DateTime.sunday:
-        return 'Chủ Nhật';
       default:
-        return '';
+        return 'Chủ Nhật';
     }
   }
 
   List<NoteModel> _getNotesForDay(DateTime day) {
     return widget.notes.where((note) {
-      if (note.isTrash || note.isArchived) return false;
       if (note.reminderDateTime != null) {
         return _isSameDay(note.reminderDateTime!, day);
       }
       return _isSameDay(note.createdAt, day);
     }).toList();
+  }
+
+  Future<void> _addNewTaskForDay() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => NoteEditorScreen(
+          note: NoteModel(
+            id: '',
+            title: '',
+            reminderDateTime: DateTime(
+              _selectedDay.year,
+              _selectedDay.month,
+              _selectedDay.day,
+              17,
+              0,
+            ),
+          ),
+        ),
+      ),
+    );
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -94,87 +117,129 @@ class _CalendarViewState extends State<CalendarView> {
     final now = DateTime.now();
     final selectedDayNotes = _getNotesForDay(_selectedDay);
 
+    final completedCount = selectedDayNotes.where((n) => n.isCompleted).length;
+    final totalCount = selectedDayNotes.length;
+
     final screenWidth = MediaQuery.of(context).size.width;
     final isWide = screenWidth >= 900;
     final isCompact = screenWidth < 500;
 
+    final cardBgColor = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final cardBorderColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+
+    // ==========================================
+    // 1. CALENDAR CARD (LEFT PANEL)
+    // ==========================================
     final calendarCard = Container(
-      padding: EdgeInsets.all(isCompact ? 12 : 16),
+      padding: EdgeInsets.all(isCompact ? 12 : 20),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E293B) : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-        ),
+        color: cardBgColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: cardBorderColor, width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         children: [
-          // Month navigation header
+          // Month navigation header (Wrapped for narrow responsiveness)
           Wrap(
             alignment: WrapAlignment.spaceBetween,
             crossAxisAlignment: WrapCrossAlignment.center,
             spacing: 8,
             runSpacing: 8,
             children: [
-              Text(
-                'Tháng ${_focusedMonth.month}, ${_focusedMonth.year}',
-                style: TextStyle(
-                  fontSize: isCompact ? 16 : 18,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: -0.3,
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: primaryColor.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(Icons.calendar_month_rounded, size: 18, color: primaryColor),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Tháng ${_focusedMonth.month}, ${_focusedMonth.year}',
+                      style: TextStyle(
+                        fontSize: isCompact ? 15 : 18,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  OutlinedButton(
-                    onPressed: _goToday,
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      minimumSize: const Size(0, 28),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    FilledButton.tonal(
+                      onPressed: _goToday,
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        minimumSize: const Size(0, 30),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      child: const Text(
+                        'Hôm nay',
+                        style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
+                      ),
                     ),
-                    child: const Text('Hôm nay', style: TextStyle(fontSize: 11.5)),
-                  ),
-                  const SizedBox(width: 4),
-                  IconButton(
-                    onPressed: _prevMonth,
-                    icon: const Icon(Icons.chevron_left_rounded),
-                    tooltip: 'Tháng trước',
-                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                    padding: const EdgeInsets.all(4),
-                  ),
-                  IconButton(
-                    onPressed: _nextMonth,
-                    icon: const Icon(Icons.chevron_right_rounded),
-                    tooltip: 'Tháng sau',
-                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                    padding: const EdgeInsets.all(4),
-                  ),
-                ],
+                    const SizedBox(width: 4),
+                    IconButton.filledTonal(
+                      onPressed: _prevMonth,
+                      icon: const Icon(Icons.chevron_left_rounded, size: 18),
+                      tooltip: 'Tháng trước',
+                      constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+                      padding: const EdgeInsets.all(4),
+                    ),
+                    const SizedBox(width: 4),
+                    IconButton.filledTonal(
+                      onPressed: _nextMonth,
+                      icon: const Icon(Icons.chevron_right_rounded, size: 18),
+                      tooltip: 'Tháng sau',
+                      constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+                      padding: const EdgeInsets.all(4),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
 
-          // Day of week headers
-          Row(
-            children: ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].map((weekday) {
-              return Expanded(
-                child: Center(
-                  child: Text(
-                    weekday,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: weekday == 'CN' ? Colors.redAccent : Colors.grey,
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
+          // Day of week headers pill bar
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 7),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                _buildWeekdayHeader('CN', isSunday: true),
+                _buildWeekdayHeader('T2'),
+                _buildWeekdayHeader('T3'),
+                _buildWeekdayHeader('T4'),
+                _buildWeekdayHeader('T5'),
+                _buildWeekdayHeader('T6'),
+                _buildWeekdayHeader('T7', isSaturday: true),
+              ],
+            ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
 
           // Days Grid
           GridView.builder(
@@ -182,7 +247,9 @@ class _CalendarViewState extends State<CalendarView> {
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 7,
-              childAspectRatio: 0.95,
+              childAspectRatio: 1.0,
+              mainAxisSpacing: 4,
+              crossAxisSpacing: 4,
             ),
             itemCount: firstDayOffset + daysInMonth,
             itemBuilder: (context, index) {
@@ -194,89 +261,119 @@ class _CalendarViewState extends State<CalendarView> {
               final currentDay = DateTime(_focusedMonth.year, _focusedMonth.month, dayNum);
               final isToday = _isSameDay(currentDay, now);
               final isSelected = _isSameDay(currentDay, _selectedDay);
+              final isSunday = currentDay.weekday == DateTime.sunday;
               final dayNotes = _getNotesForDay(currentDay);
               final hasPendingDeadline = dayNotes.any((n) => n.reminderDateTime != null && !n.isCompleted);
               final hasCompletedDeadline = dayNotes.any((n) => n.reminderDateTime != null && n.isCompleted);
 
               return InkWell(
                 onTap: () => setState(() => _selectedDay = currentDay),
-                borderRadius: BorderRadius.circular(10),
-                child: Container(
-                  margin: const EdgeInsets.all(1.5),
+                borderRadius: BorderRadius.circular(12),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? primaryColor.withValues(alpha: 0.18)
-                        : (isToday ? (isDark ? Colors.white10 : Colors.blue.shade50) : Colors.transparent),
-                    borderRadius: BorderRadius.circular(10),
+                        ? primaryColor
+                        : (isToday
+                            ? (isDark ? const Color(0xFF334155) : const Color(0xFFDBEAFE))
+                            : (isDark ? const Color(0xFF131D2D) : const Color(0xFFF8FAFC))),
+                    borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: isSelected
                           ? primaryColor
-                          : (isToday ? primaryColor.withValues(alpha: 0.5) : Colors.transparent),
-                      width: isSelected ? 2 : 1,
+                          : (isToday
+                              ? primaryColor.withValues(alpha: 0.6)
+                              : cardBorderColor.withValues(alpha: 0.5)),
+                      width: isSelected || isToday ? 1.6 : 1.0,
                     ),
+                    boxShadow: [
+                      if (isSelected)
+                        BoxShadow(
+                          color: primaryColor.withValues(alpha: 0.35),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                    ],
                   ),
-                  child: Center(
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            '$dayNum',
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: isSelected || isToday ? FontWeight.bold : FontWeight.normal,
-                              color: isSelected
-                                  ? primaryColor
-                                  : (isToday
-                                      ? primaryColor
-                                      : (isDark ? Colors.white : Colors.black87)),
-                            ),
-                          ),
-                          if (dayNotes.isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 2),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  if (hasPendingDeadline)
-                                    Container(
-                                      width: 5,
-                                      height: 5,
-                                      margin: const EdgeInsets.symmetric(horizontal: 1),
-                                      decoration: const BoxDecoration(
-                                        color: Colors.amber,
-                                        shape: BoxShape.circle,
-                                      ),
-                                    ),
-                                  if (hasCompletedDeadline)
-                                    Container(
-                                      width: 5,
-                                      height: 5,
-                                      margin: const EdgeInsets.symmetric(horizontal: 1),
-                                      decoration: const BoxDecoration(
-                                        color: Colors.green,
-                                        shape: BoxShape.circle,
-                                      ),
-                                    ),
-                                  if (!hasPendingDeadline && !hasCompletedDeadline)
-                                    Container(
-                                      width: 4.5,
-                                      height: 4.5,
-                                      margin: const EdgeInsets.symmetric(horizontal: 1),
-                                      decoration: BoxDecoration(
-                                        color: primaryColor.withValues(alpha: 0.6),
-                                        shape: BoxShape.circle,
-                                      ),
-                                    ),
-                                ],
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // Day Number
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              '$dayNum',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: isSelected || isToday ? FontWeight.bold : FontWeight.w500,
+                                color: isSelected
+                                    ? Colors.white
+                                    : (isToday
+                                        ? primaryColor
+                                        : (isSunday
+                                            ? const Color(0xFFEF4444)
+                                            : (isDark ? Colors.white70 : const Color(0xFF334155)))),
                               ),
                             ),
-                        ],
+                            if (isToday && !isSelected)
+                              Container(
+                                margin: const EdgeInsets.only(top: 2),
+                                width: 3.5,
+                                height: 3.5,
+                                decoration: BoxDecoration(
+                                  color: primaryColor,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
-                    ),
+
+                      // Task indicators at bottom
+                      if (dayNotes.isNotEmpty)
+                        Positioned(
+                          bottom: 3,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (hasPendingDeadline)
+                                Container(
+                                  width: 4.5,
+                                  height: 4.5,
+                                  margin: const EdgeInsets.symmetric(horizontal: 1),
+                                  decoration: BoxDecoration(
+                                    color: isSelected ? Colors.white : const Color(0xFFF59E0B),
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              if (hasCompletedDeadline)
+                                Container(
+                                  width: 4.5,
+                                  height: 4.5,
+                                  margin: const EdgeInsets.symmetric(horizontal: 1),
+                                  decoration: BoxDecoration(
+                                    color: isSelected ? Colors.white : const Color(0xFF10B981),
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              if (!hasPendingDeadline && !hasCompletedDeadline)
+                                Container(
+                                  width: 4.5,
+                                  height: 4.5,
+                                  margin: const EdgeInsets.symmetric(horizontal: 1),
+                                  decoration: BoxDecoration(
+                                    color: isSelected ? Colors.white : const Color(0xFF6366F1),
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               );
@@ -286,85 +383,145 @@ class _CalendarViewState extends State<CalendarView> {
       ),
     );
 
-    // Selected Day Tasks & Notes List
+    // ==========================================
+    // 2. DAY DETAILS & AGENDA (RIGHT PANEL)
+    // ==========================================
     final dayDetails = Container(
-      padding: EdgeInsets.all(isCompact ? 12 : 16),
+      padding: EdgeInsets.all(isCompact ? 12 : 20),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E293B) : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-        ),
+        color: cardBgColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: cardBorderColor, width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 8,
-            runSpacing: 10,
+          // Header: Selected Date & Add button (Right aligned)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Ngày ${_selectedDay.day}/${_selectedDay.month}/${_selectedDay.year}',
-                    style: TextStyle(fontSize: isCompact ? 15 : 16, fontWeight: FontWeight.bold),
-                  ),
-                  Text(
-                    _getVietnameseWeekday(_selectedDay),
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
-                  ),
-                ],
-              ),
-              FilledButton.icon(
-                onPressed: () async {
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => NoteEditorScreen(
-                        note: NoteModel(
-                          id: '',
-                          title: '',
-                          reminderDateTime: DateTime(
-                            _selectedDay.year,
-                            _selectedDay.month,
-                            _selectedDay.day,
-                            17,
-                            0,
-                          ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        '${_getVietnameseWeekday(_selectedDay)}, ${_selectedDay.day}/${_selectedDay.month}/${_selectedDay.year}',
+                        style: TextStyle(
+                          fontSize: isCompact ? 14.5 : 16.5,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: -0.2,
                         ),
                       ),
                     ),
-                  );
-                  if (mounted) {
-                    setState(() {});
-                  }
-                },
-                icon: const Icon(Icons.add_rounded, size: 16),
-                label: const Text('Thêm việc ngày này', style: TextStyle(fontSize: 12)),
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  minimumSize: const Size(0, 32),
+                    const SizedBox(height: 3),
+                    if (totalCount > 0)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                        decoration: BoxDecoration(
+                          color: (completedCount == totalCount ? const Color(0xFF10B981) : primaryColor)
+                              .withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          completedCount == totalCount
+                              ? '✨ Đã xong $completedCount/$totalCount việc!'
+                              : '📌 Có $totalCount việc ($completedCount đã xong)',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: completedCount == totalCount ? const Color(0xFF10B981) : primaryColor,
+                          ),
+                        ),
+                      )
+                    else
+                      Text(
+                        'Chưa có lịch trình hay ghi chú',
+                        style: TextStyle(fontSize: 11.5, color: Colors.grey.shade500),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: FilledButton.icon(
+                  onPressed: _addNewTaskForDay,
+                  icon: const Icon(Icons.add_rounded, size: 16),
+                  label: const Text(
+                    'Thêm việc',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    minimumSize: const Size(0, 34),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
                 ),
               ),
             ],
           ),
           const Divider(height: 24),
 
+          // Content List
           if (selectedDayNotes.isEmpty)
             Container(
-              padding: const EdgeInsets.symmetric(vertical: 40),
+              padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 16),
               alignment: Alignment.center,
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.event_available_rounded, size: 48, color: Colors.grey.shade400),
-                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: primaryColor.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.event_available_rounded,
+                      size: 38,
+                      color: primaryColor,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
                   Text(
-                    'Không có ghi chú hay deadline nào trong ngày này.',
-                    style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+                    'Ngày này chưa có công việc nào',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: isDark ? Colors.grey.shade200 : Colors.grey.shade800,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    'Lên lịch hoặc ghi chú ngay để không bỏ lỡ hạn chót.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                  ),
+                  const SizedBox(height: 18),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: FilledButton.tonalIcon(
+                      onPressed: _addNewTaskForDay,
+                      icon: const Icon(Icons.add_rounded, size: 16),
+                      label: const Text(
+                        'Tạo công việc cho ngày này',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
+                      ),
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -374,7 +531,7 @@ class _CalendarViewState extends State<CalendarView> {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: selectedDayNotes.length,
-              separatorBuilder: (ctx, idx) => const SizedBox(height: 10),
+              separatorBuilder: (ctx, idx) => const SizedBox(height: 8),
               itemBuilder: (context, idx) {
                 final note = selectedDayNotes[idx];
                 final palette = CardPalette.getColor(note.colorIndex);
@@ -393,110 +550,281 @@ class _CalendarViewState extends State<CalendarView> {
                       setState(() {});
                     }
                   },
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
                   child: Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
                       color: palette.getBackground(isDark),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(16),
                       border: Border.all(
                         color: hasDeadline && !isDone
-                            ? Colors.amber.shade700
+                            ? const Color(0xFFF59E0B).withValues(alpha: 0.8)
                             : palette.getBorder(isDark),
-                        width: hasDeadline && !isDone ? 1.5 : 1,
+                        width: hasDeadline && !isDone ? 1.6 : 1.2,
                       ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: isDark ? 0.22 : 0.04),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (hasDeadline)
-                          IconButton(
-                            icon: Icon(
-                              isDone ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
-                              color: isDone ? Colors.green : Colors.amber.shade800,
-                              size: 20,
+                        // Row 1: Checkbox + Title + Edit/Delete Buttons
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Quick Complete Circle Pill
+                            Tooltip(
+                              message: isDone ? 'Đánh dấu chưa xong' : 'Đánh dấu hoàn thành',
+                              child: InkWell(
+                                onTap: () => notesProvider.toggleDeadlineCompleted(note),
+                                borderRadius: BorderRadius.circular(20),
+                                child: Padding(
+                                  padding: const EdgeInsets.only(right: 10, top: 2),
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 180),
+                                    width: 22,
+                                    height: 22,
+                                    decoration: BoxDecoration(
+                                      color: isDone
+                                          ? const Color(0xFF10B981)
+                                          : Colors.transparent,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: isDone
+                                            ? const Color(0xFF10B981)
+                                            : palette.getText(isDark).withValues(alpha: 0.35),
+                                        width: 1.8,
+                                      ),
+                                    ),
+                                    child: isDone
+                                        ? const Icon(Icons.check_rounded, size: 14, color: Colors.white)
+                                        : null,
+                                  ),
+                                ),
+                              ),
                             ),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                            onPressed: () => notesProvider.toggleDeadlineCompleted(note),
-                          )
-                        else
-                          Icon(Icons.sticky_note_2_rounded, size: 18, color: palette.getText(isDark).withOpacity(0.7)),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
+
+                            // Note Title
+                            Expanded(
+                              child: Text(
                                 note.title.isEmpty ? 'Ghi chú không tiêu đề' : note.title,
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
-                                  color: palette.getText(isDark),
+                                  color: isDone
+                                      ? palette.getText(isDark).withValues(alpha: 0.5)
+                                      : palette.getText(isDark),
                                   decoration: isDone ? TextDecoration.lineThrough : null,
+                                  height: 1.3,
                                 ),
-                                maxLines: 1,
+                                maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              if (hasDeadline) ...[
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Hạn chót: ${note.reminderDateTime!.hour}:${note.reminderDateTime!.minute.toString().padLeft(2, '0')}',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: isDone ? Colors.green.shade700 : Colors.amber.shade900,
-                                    fontWeight: FontWeight.w600,
+                            ),
+
+                            const SizedBox(width: 8),
+
+                            // Action buttons group (Edit & Delete)
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                InkWell(
+                                  onTap: () async {
+                                    await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => NoteEditorScreen(note: note),
+                                      ),
+                                    );
+                                    if (mounted) setState(() {});
+                                  },
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(5),
+                                    decoration: BoxDecoration(
+                                      color: isDark
+                                          ? Colors.white.withValues(alpha: 0.08)
+                                          : Colors.black.withValues(alpha: 0.04),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Icon(
+                                      Icons.edit_outlined,
+                                      size: 15,
+                                      color: palette.getText(isDark).withValues(alpha: 0.75),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 5),
+                                InkWell(
+                                  onTap: () {
+                                    showDialog(
+                                      context: context,
+                                      builder: (ctx) => AlertDialog(
+                                        title: const Text('Xóa ghi chú?'),
+                                        content: Text(
+                                          'Chuyển "${note.title.isEmpty ? 'Ghi chú không tiêu đề' : note.title}" vào Thùng rác?',
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () => Navigator.pop(ctx),
+                                            child: const Text('Hủy'),
+                                          ),
+                                          FilledButton(
+                                            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+                                            onPressed: () {
+                                              notesProvider.moveToTrash(note);
+                                              Navigator.pop(ctx);
+                                              if (mounted) setState(() {});
+                                              AppSnackBar.showTrash(context, 'Đã chuyển ghi chú vào Thùng rác');
+                                            },
+                                            child: const Text('Xóa'),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(5),
+                                    decoration: BoxDecoration(
+                                      color: Colors.redAccent.withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(
+                                      Icons.delete_outline_rounded,
+                                      size: 15,
+                                      color: Colors.redAccent,
+                                    ),
                                   ),
                                 ),
                               ],
+                            ),
+                          ],
+                        ),
+
+                        // Row 2: Badges (Time, Folder, Checklist)
+                        const SizedBox(height: 10),
+                        Padding(
+                          padding: const EdgeInsets.only(left: 32),
+                          child: Wrap(
+                            spacing: 6,
+                            runSpacing: 5,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              if (hasDeadline)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                                  decoration: BoxDecoration(
+                                    color: (isDone ? const Color(0xFF10B981) : const Color(0xFFF59E0B))
+                                        .withValues(alpha: 0.16),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(
+                                      color: (isDone ? const Color(0xFF10B981) : const Color(0xFFF59E0B))
+                                          .withValues(alpha: 0.35),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.access_time_rounded,
+                                        size: 11.5,
+                                        color: isDone ? const Color(0xFF10B981) : const Color(0xFFD97706),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '${note.reminderDateTime!.hour.toString().padLeft(2, '0')}:${note.reminderDateTime!.minute.toString().padLeft(2, '0')}',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: isDone ? const Color(0xFF10B981) : const Color(0xFFD97706),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              if (note.folderName != null && note.folderName!.isNotEmpty)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? Colors.white.withValues(alpha: 0.08)
+                                        : Colors.black.withValues(alpha: 0.05),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(
+                                      color: isDark
+                                          ? Colors.white.withValues(alpha: 0.12)
+                                          : Colors.black.withValues(alpha: 0.08),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.folder_outlined,
+                                        size: 11.5,
+                                        color: palette.getText(isDark).withValues(alpha: 0.8),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        note.folderName!,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w500,
+                                          color: palette.getText(isDark),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              if (note.checklist.isNotEmpty)
+                                Builder(
+                                  builder: (context) {
+                                    final doneCount = note.checklist.where((c) => c.isDone).length;
+                                    final allDone = doneCount == note.checklist.length;
+                                    return Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                                      decoration: BoxDecoration(
+                                        color: (allDone ? const Color(0xFF10B981) : const Color(0xFF6366F1))
+                                            .withValues(alpha: 0.14),
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(
+                                          color: (allDone ? const Color(0xFF10B981) : const Color(0xFF6366F1))
+                                              .withValues(alpha: 0.3),
+                                          width: 1,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            allDone ? Icons.task_alt_rounded : Icons.checklist_rounded,
+                                            size: 12,
+                                            color: allDone ? const Color(0xFF10B981) : const Color(0xFF6366F1),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            '$doneCount/${note.checklist.length}',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.bold,
+                                              color: allDone ? const Color(0xFF10B981) : const Color(0xFF6366F1),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
                             ],
                           ),
-                        ),
-                        if (note.folderName != null && note.folderName!.isNotEmpty)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                            margin: const EdgeInsets.only(right: 6),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.06),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              note.folderName!,
-                              style: TextStyle(fontSize: 11, color: palette.getText(isDark)),
-                            ),
-                          ),
-                        IconButton(
-                          icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                          color: Colors.redAccent.withOpacity(0.8),
-                          tooltip: 'Xóa ghi chú này',
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                          onPressed: () {
-                            showDialog(
-                              context: context,
-                              builder: (ctx) => AlertDialog(
-                                title: const Text('Xóa ghi chú?'),
-                                content: Text('Chuyển "${note.title.isEmpty ? 'Ghi chú không tiêu đề' : note.title}" vào Thùng rác?'),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(ctx),
-                                    child: const Text('Hủy'),
-                                  ),
-                                  FilledButton(
-                                    style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
-                                    onPressed: () {
-                                      notesProvider.moveToTrash(note);
-                                      Navigator.pop(ctx);
-                                      if (mounted) setState(() {});
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(content: Text('Đã chuyển ghi chú vào Thùng rác')),
-                                      );
-                                    },
-                                    child: const Text('Xóa'),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
                         ),
                       ],
                     ),
@@ -526,6 +854,26 @@ class _CalendarViewState extends State<CalendarView> {
                 dayDetails,
               ],
             ),
+    );
+  }
+
+  Widget _buildWeekdayHeader(String name, {bool isSunday = false, bool isSaturday = false}) {
+    return Expanded(
+      child: Center(
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            name,
+            style: TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.bold,
+              color: isSunday
+                  ? const Color(0xFFEF4444)
+                  : (isSaturday ? const Color(0xFF6366F1) : const Color(0xFF94A3B8)),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

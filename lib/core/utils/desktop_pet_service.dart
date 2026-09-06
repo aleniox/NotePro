@@ -43,7 +43,7 @@ class DesktopPetService {
       
       // Update state file immediately
       final stateFile = await _getStateFile();
-      if (await stateFile.exists()) {
+      if (stateFile != null && await stateFile.exists()) {
         final content = await stateFile.readAsString();
         if (content.isNotEmpty) {
           final data = json.decode(content);
@@ -64,7 +64,7 @@ class DesktopPetService {
     _actionWatchTimer = Timer.periodic(const Duration(milliseconds: 1000), (timer) async {
       try {
         final actionFile = await _getActionFile();
-        if (await actionFile.exists()) {
+        if (actionFile != null && await actionFile.exists()) {
           final content = await actionFile.readAsString();
           if (content.isNotEmpty) {
             final data = json.decode(content);
@@ -88,22 +88,30 @@ class DesktopPetService {
     });
   }
 
-  Future<File> _getStateFile() async {
-    final appDocDir = await getApplicationSupportDirectory();
-    final dir = Directory(p.join(appDocDir.path, 'NoteProData'));
-    if (!await dir.exists()) {
-      await dir.create(recursive: true);
+  Future<File?> _getStateFile() async {
+    try {
+      final appDocDir = await getApplicationSupportDirectory().timeout(const Duration(milliseconds: 500));
+      final dir = Directory(p.join(appDocDir.path, 'NoteProData'));
+      if (!await dir.exists()) {
+        await dir.create(recursive: true);
+      }
+      return File(p.join(dir.path, 'pet_state.json'));
+    } catch (_) {
+      return null;
     }
-    return File(p.join(dir.path, 'pet_state.json'));
   }
 
-  Future<File> _getActionFile() async {
-    final appDocDir = await getApplicationSupportDirectory();
-    final dir = Directory(p.join(appDocDir.path, 'NoteProData'));
-    if (!await dir.exists()) {
-      await dir.create(recursive: true);
+  Future<File?> _getActionFile() async {
+    try {
+      final appDocDir = await getApplicationSupportDirectory().timeout(const Duration(milliseconds: 500));
+      final dir = Directory(p.join(appDocDir.path, 'NoteProData'));
+      if (!await dir.exists()) {
+        await dir.create(recursive: true);
+      }
+      return File(p.join(dir.path, 'pet_action.json'));
+    } catch (_) {
+      return null;
     }
-    return File(p.join(dir.path, 'pet_action.json'));
   }
 
   Future<void> syncDeadlines({
@@ -114,6 +122,7 @@ class DesktopPetService {
 
     try {
       final stateFile = await _getStateFile();
+      if (stateFile == null) return;
       final now = DateTime.now();
 
       final listData = pendingDeadlines.map((n) {

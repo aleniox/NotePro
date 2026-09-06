@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../core/utils/app_snackbar.dart';
 import '../core/utils/file_helper.dart';
 import '../providers/notes_provider.dart';
 import '../providers/theme_provider.dart';
@@ -82,9 +83,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               await notesProvider.clearAllData();
               if (ctx.mounted) Navigator.pop(ctx);
               if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Đã xóa sạch toàn bộ dữ liệu ghi chú.')),
-                );
+                AppSnackBar.showTrash(context, 'Đã xóa sạch toàn bộ dữ liệu ghi chú.');
               }
             },
             child: const Text('Xác nhận xóa hết'),
@@ -347,15 +346,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 try {
                                   final path = await FileHelper.exportBackupJson();
                                   if (path != null && context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text('Đã lưu bản sao: $path')),
-                                    );
+                                    AppSnackBar.showSuccess(context, 'Đã lưu bản sao: $path');
                                   }
                                 } catch (e) {
                                   if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
-                                    );
+                                    AppSnackBar.showWarning(context, 'Lỗi sao lưu: $e');
                                   }
                                 }
                               },
@@ -375,16 +370,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   if (count > 0 && context.mounted) {
                                     await notesProvider.loadAllData();
                                     if (context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(content: Text('Đã nạp lại thành công $count ghi chú!')),
-                                      );
+                                      AppSnackBar.showSuccess(context, 'Đã nạp lại thành công $count ghi chú!');
                                     }
                                   }
                                 } catch (e) {
                                   if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
-                                    );
+                                    AppSnackBar.showWarning(context, 'Lỗi nạp sao lưu: $e');
                                   }
                                 }
                               },

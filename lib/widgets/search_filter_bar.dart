@@ -353,7 +353,13 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
                   children: [
                     Icon(Icons.auto_awesome_rounded, size: 16, color: Color(0xFF6366F1)),
                     SizedBox(width: 8),
-                    Text('Hợp lý (Việc gấp & Deadline lên đầu)'),
+                    Expanded(
+                      child: Text(
+                        'Ưu tiên việc gấp & Deadline',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -363,7 +369,13 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
                   children: [
                     Icon(Icons.alarm_rounded, size: 16, color: Color(0xFFF59E0B)),
                     SizedBox(width: 8),
-                    Text('Hạn chót gần nhất'),
+                    Expanded(
+                      child: Text(
+                        'Hạn chót gần nhất',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -373,7 +385,13 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
                   children: [
                     Icon(Icons.check_circle_outline_rounded, size: 16, color: Color(0xFF10B981)),
                     SizedBox(width: 8),
-                    Text('Việc chưa xong lên trước'),
+                    Expanded(
+                      child: Text(
+                        'Việc chưa xong lên trước',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -384,7 +402,13 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
                   children: [
                     Icon(Icons.update_rounded, size: 16),
                     SizedBox(width: 8),
-                    Text('Mới cập nhật gần đây'),
+                    Expanded(
+                      child: Text(
+                        'Mới cập nhật gần đây',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -394,7 +418,13 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
                   children: [
                     Icon(Icons.date_range_rounded, size: 16),
                     SizedBox(width: 8),
-                    Text('Mới tạo gần nhất'),
+                    Expanded(
+                      child: Text(
+                        'Mới tạo gần nhất',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -404,7 +434,13 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
                   children: [
                     Icon(Icons.sort_by_alpha_rounded, size: 16),
                     SizedBox(width: 8),
-                    Text('Tên tiêu đề (A → Z)'),
+                    Expanded(
+                      child: Text(
+                        'Tên tiêu đề (A → Z)',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -424,8 +460,26 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
           );
         }
 
-        if (isCompact) {
-          final isNarrow = constraints.maxWidth < 420;
+        Widget buildNewNoteButton({bool isMini = false}) {
+          return FilledButton.icon(
+            onPressed: () => _openNewNote(context),
+            icon: const Icon(Icons.add_rounded, size: 16),
+            label: Text(
+              isMini ? 'Mới' : 'Ghi chú mới',
+              style: TextStyle(fontSize: isMini ? 12 : 12.5, fontWeight: FontWeight.bold),
+            ),
+            style: FilledButton.styleFrom(
+              backgroundColor: primaryColor,
+              foregroundColor: Colors.white,
+              padding: EdgeInsets.symmetric(horizontal: isMini ? 10 : 12, vertical: 0),
+              minimumSize: const Size(0, 36),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          );
+        }
+
+        if (constraints.maxWidth < 920) {
+          final isNarrow = constraints.maxWidth < 520;
 
           return Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -476,15 +530,15 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             buildViewModes(),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 6),
                             buildSortButton(),
+                            if (isDesktop) ...[
+                              const SizedBox(width: 4),
+                              buildPetButton(),
+                            ],
                           ],
                         ),
                       ),
-                      if (isDesktop) ...[
-                        const SizedBox(width: 4),
-                        buildPetButton(),
-                      ],
                     ],
                   ),
                 ],
@@ -494,18 +548,7 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
                     buildSearchBox(isExpanded: true),
                     if (isDesktop) ...[
                       const SizedBox(width: 8),
-                      FilledButton.icon(
-                        onPressed: () => _openNewNote(context),
-                        icon: const Icon(Icons.add_rounded, size: 16),
-                        label: const Text('Mới', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: primaryColor,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
-                          minimumSize: const Size(0, 36),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                      ),
+                      buildNewNoteButton(isMini: isNarrow),
                     ],
                   ],
                 ),
@@ -515,7 +558,7 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
         }
 
         return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
             color: isDark ? const Color(0xFF0F172A) : Colors.white,
             border: Border(
@@ -528,28 +571,17 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
           child: Row(
             children: [
               Expanded(child: buildTitleSection()),
-              const SizedBox(width: 12),
-              buildSearchBox(isExpanded: false),
               const SizedBox(width: 10),
-              buildViewModes(),
+              buildSearchBox(isExpanded: false),
               const SizedBox(width: 8),
+              buildViewModes(),
+              const SizedBox(width: 6),
               buildSortButton(),
               if (isDesktop) ...[
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 buildPetButton(),
-                const SizedBox(width: 10),
-                FilledButton.icon(
-                  onPressed: () => _openNewNote(context),
-                  icon: const Icon(Icons.add_rounded, size: 16),
-                  label: const Text('Ghi chú mới', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: primaryColor,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-                    minimumSize: const Size(0, 36),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                ),
+                const SizedBox(width: 8),
+                buildNewNoteButton(),
               ],
             ],
           ),

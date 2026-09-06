@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../core/theme/card_colors.dart';
+import '../core/utils/app_snackbar.dart';
 import '../models/folder_model.dart';
 import '../providers/notes_provider.dart';
 import '../providers/theme_provider.dart';
@@ -167,9 +168,7 @@ class AdaptiveSidebar extends StatelessWidget {
                   );
                   Provider.of<NotesProvider>(context, listen: false).updateFolder(updated);
                   Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Đã cập nhật danh mục "$name"')),
-                  );
+                  AppSnackBar.showSuccess(context, 'Đã cập nhật danh mục "$name"');
                 }
               },
               child: const Text('Lưu thay đổi'),
@@ -204,9 +203,7 @@ class AdaptiveSidebar extends StatelessWidget {
             onPressed: () {
               Provider.of<NotesProvider>(context, listen: false).deleteFolder(folder.id);
               Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Đã xóa danh mục "${folder.name}"')),
-              );
+              AppSnackBar.showTrash(context, 'Đã xóa danh mục "${folder.name}"');
             },
             child: const Text('Xóa danh mục'),
           ),
