@@ -7,6 +7,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 
@@ -46,8 +47,14 @@ namespace NoteProDesktopPet
         private bool _isCelebrating = false;
         private bool _isOverdue = false;
 
-        // Selected Pet Type: "dog" | "cat" | "anime" | "reaper"
+        // Selected Pet Type: "dog" | "cat" | "anime" | "cyber" | "reaper"
         private string _petType = "dog";
+
+        // Cyber idle sprite animation frames
+        private List<BitmapImage> _cyberIdleFrames = new List<BitmapImage>();
+        private DispatcherTimer _cyberAnimTimer;
+        private int _cyberCurrentFrame = 0;
+        private Image _cyberImageControl;
 
         // Smooth Dragging state
         private bool _isDragging = false;
@@ -130,6 +137,21 @@ namespace NoteProDesktopPet
             "Senpai ơi mau hoàn thành việc này đi mà, mình lo lắm á! 🥺"
         };
 
+        private string[] _cyberPhrasesNormal = new string[]
+        {
+            "Bíp bíp! Hệ thống phát hiện nhiệm vụ sắp đến hạn nè Master! ⚡💻",
+            "Master ơi, đừng lười nha! Em đã bật chế độ hỗ trợ tối đa rồi nè! 🚀✨",
+            "Nhiệm vụ đang chờ xác nhận! Bấm [✓ Hoàn thành!] để nạp năng lượng cho em nha! 🔋💖",
+            "Đang quét tiến độ... Master làm việc chăm chỉ điểm 10 luôn! 🌟",
+            "Nếu căng thẳng quá thì để em phát nhạc thư giãn cho Master nha! 🎧💙"
+        };
+        private string[] _cyberPhrasesPanic = new string[]
+        {
+            "BÁO ĐỘNG ĐỎ!! 🚨 Phát hiện DEADLINE đã quá hạn! Kích hoạt chế độ khẩn cấp! ⚡💦",
+            "Master ơi trễ hạn rồi kìa!! CPU của em đang nóng rực 100°C rồi nè!! 😭🔥",
+            "Cảnh báo quá hạn mức độ cao! Mau giải quyết deadline ngay thôi Master ơi! ⚠️🚨"
+        };
+
         private string[] _reaperPhrasesNormal = new string[]
         {
             "Ngươi có biết vì sao ta xuất hiện không? DEADLINE sắp tới rồi đấy! 💀⏳",
@@ -159,15 +181,15 @@ namespace NoteProDesktopPet
             string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             string[] candidateDirs = new string[]
             {
-                System.IO.Path.Combine(appData, "com.example", "notepro", "NoteProData"),
                 System.IO.Path.Combine(appData, "com.notepro.app", "notepro", "NoteProData"),
+                System.IO.Path.Combine(appData, "com.example", "notepro", "NoteProData"),
                 System.IO.Path.Combine(appData, "NoteProData")
             };
 
             string dataDir = candidateDirs[0];
             foreach (string candidate in candidateDirs)
             {
-                if (System.IO.Directory.Exists(candidate))
+                if (System.IO.File.Exists(System.IO.Path.Combine(candidate, "pet_state.json")))
                 {
                     dataDir = candidate;
                     break;
@@ -350,7 +372,7 @@ namespace NoteProDesktopPet
             // Speech text
             _txtMessage = new TextBlock
             {
-                Text = "Gâu gâu! Chủ nhân ơi, có việc sắp đến hạn nè! 🐶🐾",
+                Text = "",
                 FontSize = 12,
                 Foreground = Brushes.WhiteSmoke,
                 TextWrapping = TextWrapping.Wrap,
@@ -455,7 +477,8 @@ namespace NoteProDesktopPet
         {
             if (_petType == "dog") _petType = "cat";
             else if (_petType == "cat") _petType = "anime";
-            else if (_petType == "anime") _petType = "reaper";
+            else if (_petType == "anime") _petType = "cyber";
+            else if (_petType == "cyber") _petType = "reaper";
             else _petType = "dog";
 
             ApplyPetGraphic();
@@ -474,6 +497,7 @@ namespace NoteProDesktopPet
         private void ApplyPetGraphic()
         {
             _petRoot.Children.Clear();
+            if (_petType != "cyber" && _cyberAnimTimer != null) _cyberAnimTimer.Stop();
 
             if (_petType == "cat")
             {
@@ -489,6 +513,13 @@ namespace NoteProDesktopPet
                 _txtTitle.Foreground = new SolidColorBrush(Color.FromRgb(244, 114, 182));
                 _speechBubble.BorderBrush = _isOverdue ? Brushes.Red : new SolidColorBrush(Color.FromRgb(244, 114, 182));
             }
+            else if (_petType == "cyber")
+            {
+                DrawCyberGirlGraphic(_petRoot);
+                _txtTitle.Text = _isOverdue ? "🚨 DEADLINE ĐÃ QUÁ HẠN!" : "⚡ BÉ CYBER NEKO NHẮC VIỆC";
+                _txtTitle.Foreground = new SolidColorBrush(Color.FromRgb(6, 182, 212));
+                _speechBubble.BorderBrush = _isOverdue ? Brushes.Red : new SolidColorBrush(Color.FromRgb(6, 182, 212));
+            }
             else if (_petType == "reaper")
             {
                 DrawGrimReaperGraphic(_petRoot);
@@ -503,6 +534,7 @@ namespace NoteProDesktopPet
                 _txtTitle.Foreground = new SolidColorBrush(Color.FromRgb(245, 158, 11));
                 _speechBubble.BorderBrush = _isOverdue ? Brushes.Red : new SolidColorBrush(Color.FromRgb(245, 158, 11));
             }
+            UpdateSpeechText(false);
         }
 
         // ==================== 1. CUTE PUPPY (SHIBA / CORGI) ====================
@@ -898,7 +930,633 @@ namespace NoteProDesktopPet
             return eyeBox;
         }
 
-        // ==================== 4. CHIBI GRIM REAPER (THẦN CHẾT) ====================
+        private void LoadCyberIdleFrames()
+        {
+            if (_cyberIdleFrames.Count > 0) return;
+            string[] candidateFolders = new string[]
+            {
+                System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ide"),
+                System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "desktop_pet", "ide"),
+                "f:\\NotePro\\desktop_pet\\ide",
+                "f:\\NotePro\\ide",
+                System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "com.notepro.app", "notepro", "desktop_pet", "ide"),
+                System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "NoteProData", "ide")
+            };
+
+            string ideDir = null;
+            foreach (string dir in candidateFolders)
+            {
+                if (System.IO.Directory.Exists(dir))
+                {
+                    ideDir = dir;
+                    break;
+                }
+            }
+
+            if (ideDir != null)
+            {
+                for (int i = 1; i <= 30; i++)
+                {
+                    string pngPath = System.IO.Path.Combine(ideDir, string.Format("idle_{0}.png", i));
+                    if (System.IO.File.Exists(pngPath))
+                    {
+                        try
+                        {
+                            BitmapImage bi = new BitmapImage();
+                            bi.BeginInit();
+                            bi.CacheOption = BitmapCacheOption.OnLoad;
+                            bi.UriSource = new Uri(pngPath, UriKind.Absolute);
+                            bi.EndInit();
+                            bi.Freeze();
+                            _cyberIdleFrames.Add(bi);
+                        }
+                        catch { }
+                    }
+                }
+            }
+        }
+
+        private void StartCyberAnimation()
+        {
+            if (_cyberAnimTimer == null)
+            {
+                _cyberAnimTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(130) };
+                _cyberAnimTimer.Tick += (s, e) =>
+                {
+                    if (_petType == "cyber" && _cyberImageControl != null && _cyberIdleFrames.Count > 0)
+                    {
+                        _cyberCurrentFrame = (_cyberCurrentFrame + 1) % _cyberIdleFrames.Count;
+                        _cyberImageControl.Source = _cyberIdleFrames[_cyberCurrentFrame];
+                    }
+                };
+            }
+            _cyberAnimTimer.Start();
+        }
+
+        // ==================== 4. CYBER ANIME NEKO (BÉ MECHA WAIFU) ====================
+        private void DrawCyberGirlGraphic(Grid root)
+        {
+            LoadCyberIdleFrames();
+            if (_cyberIdleFrames.Count > 0)
+            {
+                Grid cyberContainer = new Grid
+                {
+                    Width = 120,
+                    Height = 120,
+                    Margin = new Thickness(0, 8, 0, 0),
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Top,
+                    RenderTransformOrigin = new Point(0.5, 0.9)
+                };
+                _bodyBreatheTransform = new ScaleTransform(1.0, 1.0);
+                cyberContainer.RenderTransform = _bodyBreatheTransform;
+
+                _cyberImageControl = new Image
+                {
+                    Source = _cyberIdleFrames[0],
+                    Width = 120,
+                    Height = 120,
+                    Stretch = Stretch.Uniform
+                };
+                RenderOptions.SetBitmapScalingMode(_cyberImageControl, BitmapScalingMode.NearestNeighbor);
+                cyberContainer.Children.Add(_cyberImageControl);
+
+                // Floating Notification Badge (Orange Circle with "1")
+                Border spriteNotifBadge = new Border
+                {
+                    Width = 18,
+                    Height = 18,
+                    CornerRadius = new CornerRadius(9),
+                    Background = new LinearGradientBrush(Color.FromRgb(249, 115, 22), Color.FromRgb(234, 88, 12), new Point(0, 0), new Point(1, 1)),
+                    BorderBrush = Brushes.White,
+                    BorderThickness = new Thickness(1.2),
+                    Margin = new Thickness(0, 6, 8, 0),
+                    HorizontalAlignment = HorizontalAlignment.Right,
+                    VerticalAlignment = VerticalAlignment.Top,
+                    Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Color.FromRgb(234, 88, 12), BlurRadius = 6, Opacity = 0.6, ShadowDepth = 2 }
+                };
+                spriteNotifBadge.Child = new TextBlock
+                {
+                    Text = "1",
+                    FontSize = 10,
+                    FontWeight = FontWeights.ExtraBold,
+                    Foreground = Brushes.White,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin = new Thickness(0, -1, 0, 0)
+                };
+                cyberContainer.Children.Add(spriteNotifBadge);
+
+                root.Children.Add(cyberContainer);
+                AddFXElements(root);
+                StartCyberAnimation();
+                return;
+            }
+
+            Color hairWhite = Color.FromRgb(241, 245, 249); // Silver / Platinum White Hair
+            Color hairShadow = Color.FromRgb(203, 213, 225); // Hair Shadow
+            Color hairOutline = Color.FromRgb(71, 85, 105); // Slate Hair Outline
+            Color hoodDark = Color.FromRgb(24, 24, 27); // Matte Dark Techwear Hood
+            Color hoodStroke = Color.FromRgb(51, 65, 85); // Slate Techwear Outline
+            Color neonCyan = Color.FromRgb(0, 229, 255); // Vibrant Cyber Neon Cyan
+            Color cyanGlow = Color.FromRgb(6, 182, 212); // Cyber Cyan Accent
+            Color skinColor = Color.FromRgb(255, 245, 238); // Soft Chibi Anime Skin
+
+            // 1. Left Fluffy Silver Twin Tail (Back)
+            Grid leftTailGrid = new Grid
+            {
+                Width = 34,
+                Height = 56,
+                Margin = new Thickness(0, 28, 0, 0),
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Top,
+                RenderTransformOrigin = new Point(0.85, 0.12)
+            };
+            _leftEarRotate = new RotateTransform(0);
+            leftTailGrid.RenderTransform = _leftEarRotate;
+
+            // Fluffy Twin Tail Hair Shape
+            System.Windows.Shapes.Path leftTailHair = new System.Windows.Shapes.Path
+            {
+                Data = Geometry.Parse("M 26 2 C 12 12, -4 28, 4 46 C 10 54, 22 54, 26 44 C 30 34, 24 22, 27 12 C 29 6, 30 2, 26 2 Z"),
+                Fill = new LinearGradientBrush(hairWhite, hairShadow, new Point(0, 0), new Point(0, 1)),
+                Stroke = new SolidColorBrush(hairOutline),
+                StrokeThickness = 1.8,
+                StrokeLineJoin = PenLineJoin.Round
+            };
+            leftTailGrid.Children.Add(leftTailHair);
+
+            // Cyber Hair Tie (Dark Clip + Cyan Glowing Band)
+            leftTailGrid.Children.Add(new Rectangle { Width = 10, Height = 4, RadiusX = 2, RadiusY = 2, Fill = new SolidColorBrush(hoodDark), Stroke = new SolidColorBrush(hoodStroke), StrokeThickness = 1.2, Margin = new Thickness(18, 2, 0, 0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top });
+            leftTailGrid.Children.Add(new Rectangle { Width = 10, Height = 1.8, RadiusX = 1, RadiusY = 1, Fill = new SolidColorBrush(neonCyan), Margin = new Thickness(18, 3, 0, 0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top });
+            root.Children.Add(leftTailGrid);
+
+            // 2. Right Fluffy Silver Twin Tail (Back)
+            Grid rightTailGrid = new Grid
+            {
+                Width = 34,
+                Height = 56,
+                Margin = new Thickness(76, 28, 0, 0),
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Top,
+                RenderTransformOrigin = new Point(0.15, 0.12)
+            };
+            _rightEarRotate = new RotateTransform(0);
+            rightTailGrid.RenderTransform = _rightEarRotate;
+
+            System.Windows.Shapes.Path rightTailHair = new System.Windows.Shapes.Path
+            {
+                Data = Geometry.Parse("M 8 2 C 22 12, 38 28, 30 46 C 24 54, 12 54, 8 44 C 4 34, 10 22, 7 12 C 5 6, 4 2, 8 2 Z"),
+                Fill = new LinearGradientBrush(hairWhite, hairShadow, new Point(0, 0), new Point(0, 1)),
+                Stroke = new SolidColorBrush(hairOutline),
+                StrokeThickness = 1.8,
+                StrokeLineJoin = PenLineJoin.Round
+            };
+            rightTailGrid.Children.Add(rightTailHair);
+
+            rightTailGrid.Children.Add(new Rectangle { Width = 10, Height = 4, RadiusX = 2, RadiusY = 2, Fill = new SolidColorBrush(hoodDark), Stroke = new SolidColorBrush(hoodStroke), StrokeThickness = 1.2, Margin = new Thickness(6, 2, 0, 0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top });
+            rightTailGrid.Children.Add(new Rectangle { Width = 10, Height = 1.8, RadiusX = 1, RadiusY = 1, Fill = new SolidColorBrush(neonCyan), Margin = new Thickness(6, 3, 0, 0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top });
+            root.Children.Add(rightTailGrid);
+
+            // 3. Cyber Legs & Boots
+            Grid legsGrid = new Grid
+            {
+                Width = 44,
+                Height = 24,
+                Margin = new Thickness(0, 92, 0, 0),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Top
+            };
+
+            // Left Cyber Boot
+            Border leftBoot = new Border
+            {
+                Width = 12,
+                Height = 18,
+                CornerRadius = new CornerRadius(3, 3, 4, 4),
+                Background = new SolidColorBrush(Color.FromRgb(15, 23, 42)),
+                BorderBrush = new SolidColorBrush(hoodStroke),
+                BorderThickness = new Thickness(1.4),
+                Margin = new Thickness(6, 4, 0, 0),
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Top
+            };
+            legsGrid.Children.Add(leftBoot);
+            // Left Boot Cyan Neon Band & Sole
+            legsGrid.Children.Add(new Rectangle { Width = 10, Height = 2.5, Fill = new SolidColorBrush(neonCyan), Margin = new Thickness(7, 10, 0, 0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top });
+            legsGrid.Children.Add(new Rectangle { Width = 12, Height = 3, RadiusX = 1.5, RadiusY = 1.5, Fill = Brushes.White, Stroke = new SolidColorBrush(hoodStroke), StrokeThickness = 1.0, Margin = new Thickness(6, 19, 0, 0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top });
+
+            // Right Cyber Boot
+            Border rightBoot = new Border
+            {
+                Width = 12,
+                Height = 18,
+                CornerRadius = new CornerRadius(3, 3, 4, 4),
+                Background = new SolidColorBrush(Color.FromRgb(15, 23, 42)),
+                BorderBrush = new SolidColorBrush(hoodStroke),
+                BorderThickness = new Thickness(1.4),
+                Margin = new Thickness(0, 4, 6, 0),
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Top
+            };
+            legsGrid.Children.Add(rightBoot);
+            // Right Boot Cyan Neon Band & Sole
+            legsGrid.Children.Add(new Rectangle { Width = 10, Height = 2.5, Fill = new SolidColorBrush(neonCyan), Margin = new Thickness(0, 10, 7, 0), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top });
+            legsGrid.Children.Add(new Rectangle { Width = 12, Height = 3, RadiusX = 1.5, RadiusY = 1.5, Fill = Brushes.White, Stroke = new SolidColorBrush(hoodStroke), StrokeThickness = 1.0, Margin = new Thickness(0, 19, 6, 0), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top });
+
+            root.Children.Add(legsGrid);
+
+            // 4. Cyber Body & Techwear Outfit
+            Grid body = new Grid
+            {
+                Width = 54,
+                Height = 40,
+                Margin = new Thickness(0, 62, 0, 0),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Top
+            };
+
+            // Pleated Tech Skirt
+            Polygon skirt = new Polygon
+            {
+                Points = new PointCollection { new Point(12, 18), new Point(42, 18), new Point(48, 34), new Point(6, 34) },
+                Fill = new SolidColorBrush(Color.FromRgb(15, 23, 42)),
+                Stroke = new SolidColorBrush(hoodStroke),
+                StrokeThickness = 1.5
+            };
+            body.Children.Add(skirt);
+
+            // Skirt Glowing Cyan Neon Hem
+            body.Children.Add(new System.Windows.Shapes.Path
+            {
+                Data = Geometry.Parse("M 7 33 L 47 33"),
+                Stroke = new SolidColorBrush(neonCyan),
+                StrokeThickness = 2.2,
+                StrokeStartLineCap = PenLineCap.Round,
+                StrokeEndLineCap = PenLineCap.Round
+            });
+
+            // Sleeveless Cyber Vest (Dark techwear body)
+            Polygon vest = new Polygon
+            {
+                Points = new PointCollection { new Point(14, 0), new Point(40, 0), new Point(43, 19), new Point(11, 19) },
+                Fill = new SolidColorBrush(Color.FromRgb(24, 24, 27)),
+                Stroke = new SolidColorBrush(hoodStroke),
+                StrokeThickness = 1.5
+            };
+            body.Children.Add(vest);
+
+            // Cyan Vertical Tech Lines on Vest
+            body.Children.Add(new System.Windows.Shapes.Path
+            {
+                Data = Geometry.Parse("M 19 2 L 17 18 M 35 2 L 37 18"),
+                Stroke = new SolidColorBrush(neonCyan),
+                StrokeThickness = 1.6,
+                StrokeStartLineCap = PenLineCap.Round,
+                StrokeEndLineCap = PenLineCap.Round
+            });
+
+            // Glowing Cyber Chest Core / Sensor
+            Ellipse chestSensor = new Ellipse
+            {
+                Width = 6,
+                Height = 6,
+                Fill = new SolidColorBrush(neonCyan),
+                Stroke = Brushes.White,
+                StrokeThickness = 1.0,
+                Margin = new Thickness(0, 6, 0, 0),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Top,
+                Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Color.FromRgb(0, 229, 255), BlurRadius = 6, Opacity = 0.9, ShadowDepth = 0 }
+            };
+            body.Children.Add(chestSensor);
+
+            // Cyber Belt & Glowing Cyan Buckle
+            body.Children.Add(new Rectangle { Width = 30, Height = 3.5, Fill = new SolidColorBrush(Color.FromRgb(9, 9, 11)), Margin = new Thickness(0, 16, 0, 0), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Top });
+            body.Children.Add(new Rectangle { Width = 8, Height = 4.5, RadiusX = 1.5, RadiusY = 1.5, Fill = new SolidColorBrush(neonCyan), Margin = new Thickness(0, 15.5, 0, 0), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Top });
+
+            // Cyber Detached Sleeves / Cuffs
+            // Left Arm & Cuff
+            Border leftArm = new Border { Width = 8, Height = 14, Background = new SolidColorBrush(skinColor), CornerRadius = new CornerRadius(3), Margin = new Thickness(3, 4, 0, 0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
+            body.Children.Add(leftArm);
+            Border leftCuff = new Border { Width = 9, Height = 9, Background = new SolidColorBrush(Color.FromRgb(15, 23, 42)), BorderBrush = new SolidColorBrush(hoodStroke), BorderThickness = new Thickness(1.0), CornerRadius = new CornerRadius(2), Margin = new Thickness(2, 10, 0, 0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
+            body.Children.Add(leftCuff);
+            body.Children.Add(new Rectangle { Width = 7, Height = 1.8, Fill = new SolidColorBrush(neonCyan), Margin = new Thickness(3, 10, 0, 0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top });
+
+            // Right Arm & Cuff
+            Border rightArm = new Border { Width = 8, Height = 14, Background = new SolidColorBrush(skinColor), CornerRadius = new CornerRadius(3), Margin = new Thickness(0, 4, 3, 0), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top };
+            body.Children.Add(rightArm);
+            Border rightCuff = new Border { Width = 9, Height = 9, Background = new SolidColorBrush(Color.FromRgb(15, 23, 42)), BorderBrush = new SolidColorBrush(hoodStroke), BorderThickness = new Thickness(1.0), CornerRadius = new CornerRadius(2), Margin = new Thickness(0, 10, 2, 0), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top };
+            body.Children.Add(rightCuff);
+            body.Children.Add(new Rectangle { Width = 7, Height = 1.8, Fill = new SolidColorBrush(neonCyan), Margin = new Thickness(0, 10, 3, 0), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top });
+
+            root.Children.Add(body);
+
+            // 5. Head Container (Cyber Cat Hoodie + Headset + Face)
+            Grid headContainer = new Grid
+            {
+                Width = 84,
+                Height = 74,
+                Margin = new Thickness(0, 2, 0, 0),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Top,
+                RenderTransformOrigin = new Point(0.5, 0.9)
+            };
+            _bodyBreatheTransform = new ScaleTransform(1.0, 1.0);
+            headContainer.RenderTransform = _bodyBreatheTransform;
+
+            // Cyber Antenna Rods (Sticking out of Hood top)
+            // Left Antenna
+            System.Windows.Shapes.Path leftAntenna = new System.Windows.Shapes.Path
+            {
+                Data = Geometry.Parse("M 30 14 L 22 2"),
+                Stroke = new SolidColorBrush(hoodStroke),
+                StrokeThickness = 2.0,
+                StrokeStartLineCap = PenLineCap.Round,
+                StrokeEndLineCap = PenLineCap.Round
+            };
+            headContainer.Children.Add(leftAntenna);
+            Ellipse leftAntennaTip = new Ellipse
+            {
+                Width = 5,
+                Height = 5,
+                Fill = new SolidColorBrush(neonCyan),
+                Margin = new Thickness(20, 0, 0, 0),
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Top,
+                Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Color.FromRgb(0, 229, 255), BlurRadius = 5, Opacity = 0.9, ShadowDepth = 0 }
+            };
+            headContainer.Children.Add(leftAntennaTip);
+
+            // Right Antenna
+            System.Windows.Shapes.Path rightAntenna = new System.Windows.Shapes.Path
+            {
+                Data = Geometry.Parse("M 54 14 L 62 2"),
+                Stroke = new SolidColorBrush(hoodStroke),
+                StrokeThickness = 2.0,
+                StrokeStartLineCap = PenLineCap.Round,
+                StrokeEndLineCap = PenLineCap.Round
+            };
+            headContainer.Children.Add(rightAntenna);
+            Ellipse rightAntennaTip = new Ellipse
+            {
+                Width = 5,
+                Height = 5,
+                Fill = new SolidColorBrush(neonCyan),
+                Margin = new Thickness(0, 0, 20, 0),
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Top,
+                Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Color.FromRgb(0, 229, 255), BlurRadius = 5, Opacity = 0.9, ShadowDepth = 0 }
+            };
+            headContainer.Children.Add(rightAntennaTip);
+
+            // Cyber Cat Ears on Hood
+            // Left Ear
+            Polygon leftCyberEar = new Polygon
+            {
+                Points = new PointCollection { new Point(14, 22), new Point(24, 6), new Point(34, 18) },
+                Fill = new SolidColorBrush(hoodDark),
+                Stroke = new SolidColorBrush(hoodStroke),
+                StrokeThickness = 2.0
+            };
+            headContainer.Children.Add(leftCyberEar);
+            Polygon leftInnerCyan = new Polygon
+            {
+                Points = new PointCollection { new Point(17, 20), new Point(24, 9), new Point(30, 17) },
+                Fill = new SolidColorBrush(neonCyan),
+                Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Color.FromRgb(0, 229, 255), BlurRadius = 4, Opacity = 0.8, ShadowDepth = 0 }
+            };
+            headContainer.Children.Add(leftInnerCyan);
+
+            // Right Ear
+            Polygon rightCyberEar = new Polygon
+            {
+                Points = new PointCollection { new Point(70, 22), new Point(60, 6), new Point(50, 18) },
+                Fill = new SolidColorBrush(hoodDark),
+                Stroke = new SolidColorBrush(hoodStroke),
+                StrokeThickness = 2.0
+            };
+            headContainer.Children.Add(rightCyberEar);
+            Polygon rightInnerCyan = new Polygon
+            {
+                Points = new PointCollection { new Point(67, 20), new Point(60, 9), new Point(54, 17) },
+                Fill = new SolidColorBrush(neonCyan),
+                Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Color.FromRgb(0, 229, 255), BlurRadius = 4, Opacity = 0.8, ShadowDepth = 0 }
+            };
+            headContainer.Children.Add(rightInnerCyan);
+
+            // Black Techwear Hood Silhouette
+            Border hoodBack = new Border
+            {
+                Width = 72,
+                Height = 62,
+                Margin = new Thickness(0, 10, 0, 0),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Top,
+                CornerRadius = new CornerRadius(36, 36, 26, 26),
+                Background = new SolidColorBrush(hoodDark),
+                BorderBrush = new SolidColorBrush(hoodStroke),
+                BorderThickness = new Thickness(2.0),
+                Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Colors.Black, BlurRadius = 10, Opacity = 0.35, ShadowDepth = 2 }
+            };
+            headContainer.Children.Add(hoodBack);
+
+            // Chibi Porcelain Anime Face
+            Border face = new Border
+            {
+                Width = 56,
+                Height = 48,
+                Margin = new Thickness(0, 20, 0, 0),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Top,
+                CornerRadius = new CornerRadius(24, 24, 20, 20),
+                Background = new SolidColorBrush(skinColor),
+                BorderBrush = new SolidColorBrush(Color.FromRgb(74, 53, 37)),
+                BorderThickness = new Thickness(1.6)
+            };
+            headContainer.Children.Add(face);
+
+            // Eyes Grid (Animated scale for blink)
+            Grid eyesGrid = new Grid
+            {
+                Width = 42,
+                Height = 16,
+                Margin = new Thickness(0, 31, 0, 0),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Top,
+                RenderTransformOrigin = new Point(0.5, 0.5)
+            };
+            _eyesScaleY = new ScaleTransform(1.0, 1.0);
+            eyesGrid.RenderTransform = _eyesScaleY;
+
+            Grid leftEye = CreateCyberAnimeEye(true);
+            leftEye.HorizontalAlignment = HorizontalAlignment.Left;
+            Grid rightEye = CreateCyberAnimeEye(false);
+            rightEye.HorizontalAlignment = HorizontalAlignment.Right;
+            eyesGrid.Children.Add(leftEye);
+            eyesGrid.Children.Add(rightEye);
+            headContainer.Children.Add(eyesGrid);
+
+            // Cute Cyber Digital Tear & Cheek Markings
+            headContainer.Children.Add(new Border { Width = 10, Height = 5, CornerRadius = new CornerRadius(4), Background = new SolidColorBrush(Color.FromArgb(140, 251, 113, 133)), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(17, 42, 0, 0) });
+            headContainer.Children.Add(new Border { Width = 10, Height = 5, CornerRadius = new CornerRadius(4), Background = new SolidColorBrush(Color.FromArgb(140, 251, 113, 133)), HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 42, 17, 0) });
+            // Neon Cyan Digital Tech Tear Markings
+            headContainer.Children.Add(new Rectangle { Width = 2.5, Height = 4, RadiusX = 1, RadiusY = 1, Fill = new SolidColorBrush(neonCyan), Margin = new Thickness(24, 43, 0, 0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top });
+            headContainer.Children.Add(new Rectangle { Width = 2.5, Height = 4, RadiusX = 1, RadiusY = 1, Fill = new SolidColorBrush(neonCyan), Margin = new Thickness(0, 43, 24, 0), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top });
+
+            // Cute Anime Mouth
+            headContainer.Children.Add(new System.Windows.Shapes.Path
+            {
+                Data = Geometry.Parse("M 38 45 Q 42 48 46 45"),
+                Stroke = new SolidColorBrush(Color.FromRgb(74, 53, 37)),
+                StrokeThickness = 1.6,
+                StrokeStartLineCap = PenLineCap.Round,
+                StrokeEndLineCap = PenLineCap.Round,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Top
+            });
+
+            // Silver / Platinum Bangs framing face inside Hood
+            headContainer.Children.Add(new System.Windows.Shapes.Path
+            {
+                Data = Geometry.Parse("M 15 22 C 22 14, 62 14, 69 22 C 61 20, 56 28, 52 23 C 46 30, 38 22, 32 28 C 28 22, 23 26, 15 22 Z"),
+                Fill = new LinearGradientBrush(hairWhite, hairShadow, new Point(0, 0), new Point(0, 1)),
+                Stroke = new SolidColorBrush(hairOutline),
+                StrokeThickness = 1.8,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Top,
+                Margin = new Thickness(0, 10, 0, 0)
+            });
+
+            // Cyber Headset / Audio Cans on Sides
+            // Left Earpiece
+            Border leftHeadphone = new Border
+            {
+                Width = 12,
+                Height = 22,
+                CornerRadius = new CornerRadius(5),
+                Background = new SolidColorBrush(Color.FromRgb(15, 23, 42)),
+                BorderBrush = new SolidColorBrush(hoodStroke),
+                BorderThickness = new Thickness(1.5),
+                Margin = new Thickness(4, 28, 0, 0),
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Top
+            };
+            headContainer.Children.Add(leftHeadphone);
+            Ellipse leftHeadphoneRing = new Ellipse
+            {
+                Width = 7,
+                Height = 12,
+                Stroke = new SolidColorBrush(neonCyan),
+                StrokeThickness = 1.6,
+                Margin = new Thickness(6, 33, 0, 0),
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Top,
+                Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Color.FromRgb(0, 229, 255), BlurRadius = 4, Opacity = 0.9, ShadowDepth = 0 }
+            };
+            headContainer.Children.Add(leftHeadphoneRing);
+
+            // Right Earpiece
+            Border rightHeadphone = new Border
+            {
+                Width = 12,
+                Height = 22,
+                CornerRadius = new CornerRadius(5),
+                Background = new SolidColorBrush(Color.FromRgb(15, 23, 42)),
+                BorderBrush = new SolidColorBrush(hoodStroke),
+                BorderThickness = new Thickness(1.5),
+                Margin = new Thickness(0, 28, 4, 0),
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Top
+            };
+            headContainer.Children.Add(rightHeadphone);
+            Ellipse rightHeadphoneRing = new Ellipse
+            {
+                Width = 7,
+                Height = 12,
+                Stroke = new SolidColorBrush(neonCyan),
+                StrokeThickness = 1.6,
+                Margin = new Thickness(0, 33, 6, 0),
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Top,
+                Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Color.FromRgb(0, 229, 255), BlurRadius = 4, Opacity = 0.9, ShadowDepth = 0 }
+            };
+            headContainer.Children.Add(rightHeadphoneRing);
+
+            // 6. Floating Notification Badge (Orange Circle with "1")
+            Border notifBadge = new Border
+            {
+                Width = 18,
+                Height = 18,
+                CornerRadius = new CornerRadius(9),
+                Background = new LinearGradientBrush(Color.FromRgb(249, 115, 22), Color.FromRgb(234, 88, 12), new Point(0, 0), new Point(1, 1)),
+                BorderBrush = Brushes.White,
+                BorderThickness = new Thickness(1.2),
+                Margin = new Thickness(0, 6, 0, 0),
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Top,
+                Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Color.FromRgb(234, 88, 12), BlurRadius = 6, Opacity = 0.6, ShadowDepth = 2 }
+            };
+            notifBadge.Child = new TextBlock
+            {
+                Text = "1",
+                FontSize = 10,
+                FontWeight = FontWeights.ExtraBold,
+                Foreground = Brushes.White,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, -1, 0, 0)
+            };
+            headContainer.Children.Add(notifBadge);
+
+            root.Children.Add(headContainer);
+            AddFXElements(root);
+        }
+
+        private Grid CreateCyberAnimeEye(bool isLeft)
+        {
+            Grid eyeBox = new Grid { Width = 14, Height = 16 };
+            // Upper Cyber Eyelash Curve
+            eyeBox.Children.Add(new System.Windows.Shapes.Path
+            {
+                Data = Geometry.Parse("M 0 3 Q 7 -1 14 3"),
+                Stroke = new SolidColorBrush(Color.FromRgb(15, 23, 42)),
+                StrokeThickness = 2.2,
+                StrokeStartLineCap = PenLineCap.Round,
+                StrokeEndLineCap = PenLineCap.Round
+            });
+            // Vibrant Blue -> Glowing Cyan Cyber Iris
+            eyeBox.Children.Add(new Ellipse
+            {
+                Width = 11,
+                Height = 13,
+                Margin = new Thickness(1.5, 2, 0, 0),
+                Fill = new LinearGradientBrush(Color.FromRgb(2, 132, 199), Color.FromRgb(0, 229, 255), new Point(0, 0), new Point(0, 1))
+            });
+            // Big Sparkling Specular Highlight
+            eyeBox.Children.Add(new Ellipse
+            {
+                Width = 4.8,
+                Height = 5.2,
+                Fill = Brushes.White,
+                Margin = new Thickness(isLeft ? 3.5 : 2.5, 3, 0, 0),
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Top
+            });
+            // Mini Specular Reflection
+            eyeBox.Children.Add(new Ellipse
+            {
+                Width = 2.2,
+                Height = 2.2,
+                Fill = Brushes.White,
+                Margin = new Thickness(isLeft ? 6.5 : 6.5, 8.5, 0, 0),
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Top
+            });
+            return eyeBox;
+        }
+
+        // ==================== 5. CHIBI GRIM REAPER (THẦN CHẾT) ====================
         private void DrawGrimReaperGraphic(Grid root)
         {
             Color cloakDark = Color.FromRgb(17, 14, 24); // Midnight Obsidian Cloak
@@ -1271,6 +1929,14 @@ namespace NoteProDesktopPet
             try
             {
                 if (_isCelebrating || _isDragging) return;
+                
+                // Riêng bé Cyber Neko chỉ đứng yên phát hoạt ảnh nhịp thở Idle, không đi lung tung
+                if (_petType == "cyber")
+                {
+                    SetPetState(PetState.Idle);
+                    return;
+                }
+
                 if (_isOverdue)
                 {
                     WanderAcrossScreen(isFast: true);
@@ -1355,32 +2021,47 @@ namespace NoteProDesktopPet
             if (_sleepZ != null) _sleepZ.Visibility = _state == PetState.Sleeping ? Visibility.Visible : Visibility.Collapsed;
         }
 
-        private void CycleSpeechText()
+        private void UpdateSpeechText(bool advance = false)
         {
             try
             {
-                string[] normalList = _petType == "reaper" ? _reaperPhrasesNormal
-                                    : (_petType == "cat" ? _catPhrasesNormal
-                                    : (_petType == "anime" ? _animePhrasesNormal : _dogPhrasesNormal));
-                string[] panicList = _petType == "reaper" ? _reaperPhrasesPanic
-                                   : (_petType == "cat" ? _catPhrasesPanic
-                                   : (_petType == "anime" ? _animePhrasesPanic : _dogPhrasesPanic));
+                if (_isCelebrating) return;
 
-                if (_isOverdue)
+                string[] normalList = _petType == "reaper" ? _reaperPhrasesNormal
+                                    : (_petType == "cyber" ? _cyberPhrasesNormal
+                                    : (_petType == "cat" ? _catPhrasesNormal
+                                    : (_petType == "anime" ? _animePhrasesNormal : _dogPhrasesNormal)));
+                string[] panicList = _petType == "reaper" ? _reaperPhrasesPanic
+                                   : (_petType == "cyber" ? _cyberPhrasesPanic
+                                   : (_petType == "cat" ? _catPhrasesPanic
+                                   : (_petType == "anime" ? _animePhrasesPanic : _dogPhrasesPanic)));
+
+                string[] currentList = _isOverdue ? panicList : normalList;
+                if (currentList == null || currentList.Length == 0) return;
+
+                if (advance)
                 {
-                    _speechIndex = (_speechIndex + 1) % panicList.Length;
-                    _txtMessage.Text = panicList[_speechIndex];
+                    _speechIndex = (_speechIndex + 1) % currentList.Length;
                 }
                 else
                 {
-                    _speechIndex = (_speechIndex + 1) % normalList.Length;
-                    _txtMessage.Text = normalList[_speechIndex];
+                    if (_speechIndex >= currentList.Length) _speechIndex = 0;
+                }
+
+                if (_txtMessage != null)
+                {
+                    _txtMessage.Text = currentList[_speechIndex];
                 }
             }
             catch (Exception ex)
             {
-                Log("Error in CycleSpeechText: " + ex.Message);
+                Log("Error in UpdateSpeechText: " + ex.Message);
             }
+        }
+
+        private void CycleSpeechText()
+        {
+            UpdateSpeechText(true);
         }
 
         private void SpawnParticle(double startX, double startY)
@@ -1391,6 +2072,7 @@ namespace NoteProDesktopPet
                 if (_petType == "dog") icon = _random.Next(2) == 0 ? "🦴" : "🐾";
                 else if (_petType == "cat") icon = _random.Next(2) == 0 ? "🐾" : "💖";
                 else if (_petType == "anime") icon = _random.Next(2) == 0 ? "🌸" : "✨";
+                else if (_petType == "cyber") icon = _random.Next(3) == 0 ? "⚡" : (_random.Next(2) == 0 ? "💻" : "✨");
                 else if (_petType == "reaper") icon = _random.Next(3) == 0 ? "💀" : (_random.Next(2) == 0 ? "👻" : "⏳");
 
                 TextBlock p = new TextBlock { Text = icon, FontSize = 18 };
@@ -1409,6 +2091,23 @@ namespace NoteProDesktopPet
             {
                 Log("Error in SpawnParticle: " + ex.Message);
             }
+        }
+
+        private string ExtractJsonStringValue(string json, string key)
+        {
+            try
+            {
+                int keyIdx = json.IndexOf("\"" + key + "\"");
+                if (keyIdx < 0) return null;
+                int colonIdx = json.IndexOf(':', keyIdx + key.Length + 2);
+                if (colonIdx < 0) return null;
+                int firstQuote = json.IndexOf('"', colonIdx + 1);
+                if (firstQuote < 0) return null;
+                int secondQuote = json.IndexOf('"', firstQuote + 1);
+                if (secondQuote < 0) return null;
+                return json.Substring(firstQuote + 1, secondQuote - firstQuote - 1).Trim();
+            }
+            catch { return null; }
         }
 
         private void SyncFromStateFile()
@@ -1435,20 +2134,15 @@ namespace NoteProDesktopPet
                 bool hasPending = json.Contains("\"hasPending\":true") || json.Contains("\"hasPending\": true");
 
                 // Check petType sync from NotePro
-                int petTypeIdx = json.IndexOf("\"petType\":");
-                if (petTypeIdx > 0)
+                string newType = ExtractJsonStringValue(json, "petType");
+                if (!string.IsNullOrEmpty(newType))
                 {
-                    int start = json.IndexOf("\"", petTypeIdx + 10) + 1;
-                    int end = json.IndexOf("\"", start);
-                    if (start > 0 && end > start)
+                    newType = newType.ToLower();
+                    if ((newType == "dog" || newType == "cat" || newType == "anime" || newType == "cyber" || newType == "reaper") && newType != _petType)
                     {
-                        string newType = json.Substring(start, end - start).ToLower();
-                        if ((newType == "dog" || newType == "cat" || newType == "anime" || newType == "reaper") && newType != _petType)
-                        {
-                            _petType = newType;
-                            ApplyPetGraphic();
-                            SetupContinuousAnimations();
-                        }
+                        _petType = newType;
+                        ApplyPetGraphic();
+                        SetupContinuousAnimations();
                     }
                 }
 
@@ -1475,6 +2169,12 @@ namespace NoteProDesktopPet
                         _txtTitle.Foreground = new SolidColorBrush(Color.FromRgb(139, 92, 246));
                         _txtTask.Text = "Senpai ơi, không có việc gấp đâu ạ! Chúc Senpai một ngày vui vẻ! ✨";
                     }
+                    else if (_petType == "cyber")
+                    {
+                        _txtTitle.Text = "⚡ BÉ CYBER NEKO NHẮC VIỆC";
+                        _txtTitle.Foreground = new SolidColorBrush(Color.FromRgb(6, 182, 212));
+                        _txtTask.Text = "Hệ thống đang hoạt động tối ưu! Không có deadline gấp, Master cứ an tâm nhé! 💙⚡";
+                    }
                     else
                     {
                         _txtTitle.Text = "💀 THẦN CHẾT CHIBI";
@@ -1487,43 +2187,36 @@ namespace NoteProDesktopPet
                 if (_btnComplete != null) _btnComplete.Visibility = Visibility.Visible;
 
                 // Title
-                int titleIdx = json.IndexOf("\"title\":");
-                if (titleIdx > 0)
+                string taskTitle = ExtractJsonStringValue(json, "title");
+                if (!string.IsNullOrEmpty(taskTitle))
                 {
-                    int start = json.IndexOf("\"", titleIdx + 8) + 1;
-                    int end = json.IndexOf("\"", start);
-                    if (start > 0 && end > start)
-                    {
-                        _txtTask.Text = json.Substring(start, end - start);
-                    }
+                    _txtTask.Text = taskTitle;
                 }
 
                 // ID
-                int idIdx = json.IndexOf("\"id\":");
-                if (idIdx > 0)
+                string taskId = ExtractJsonStringValue(json, "id");
+                if (!string.IsNullOrEmpty(taskId))
                 {
-                    int start = json.IndexOf("\"", idIdx + 5) + 1;
-                    int end = json.IndexOf("\"", start);
-                    if (start > 0 && end > start)
-                    {
-                        if (_currentDeadline == null) _currentDeadline = new DeadlineItem();
-                        _currentDeadline.id = json.Substring(start, end - start);
-                    }
+                    if (_currentDeadline == null) _currentDeadline = new DeadlineItem();
+                    _currentDeadline.id = taskId;
                 }
 
                 _isOverdue = json.Contains("\"isOverdue\":true") || json.Contains("\"isOverdue\": true");
                 if (_isOverdue)
                 {
-                    _txtTitle.Text = _petType == "reaper" ? "🚨 TỬ THẦN ĐẾN ĐÒI DEADLINE!" : "🚨 DEADLINE ĐÃ QUÁ HẠN RỒI!";
+                    _txtTitle.Text = _petType == "reaper" ? "🚨 TỬ THẦN ĐẾN ĐÒI DEADLINE!"
+                                   : (_petType == "cyber" ? "🚨 BÁO ĐỘNG ĐỎ: QUÁ HẠN!" : "🚨 DEADLINE ĐÃ QUÁ HẠN RỒI!");
                     _txtTitle.Foreground = Brushes.Red;
                     _speechBubble.BorderBrush = Brushes.Red;
                 }
                 else
                 {
-                    _txtTitle.Text = _petType == "reaper" ? "⚡ THẦN CHẾT ĐÒI HẠN CHÓT!" : "⏰ HẠN CHÓT CẦN LÀM!";
-                    _txtTitle.Foreground = new SolidColorBrush(Color.FromRgb(245, 158, 11));
-                    _speechBubble.BorderBrush = new SolidColorBrush(Color.FromRgb(245, 158, 11));
+                    _txtTitle.Text = _petType == "reaper" ? "⚡ THẦN CHẾT ĐÒI HẠN CHÓT!"
+                                   : (_petType == "cyber" ? "⚡ MASTER ƠI, CÓ NHIỆM VỤ NÈ!" : "⏰ HẠN CHÓT CẦN LÀM!");
+                    _txtTitle.Foreground = _petType == "cyber" ? new SolidColorBrush(Color.FromRgb(6, 182, 212)) : new SolidColorBrush(Color.FromRgb(245, 158, 11));
+                    _speechBubble.BorderBrush = _petType == "cyber" ? new SolidColorBrush(Color.FromRgb(6, 182, 212)) : new SolidColorBrush(Color.FromRgb(245, 158, 11));
                 }
+                UpdateSpeechText(false);
             }
             catch { }
         }
@@ -1543,7 +2236,8 @@ namespace NoteProDesktopPet
                 _txtTitle.Foreground = new SolidColorBrush(Color.FromRgb(16, 185, 129));
                 _txtMessage.Text = _petType == "dog" ? "Gâu gâu gâu!! 🎉 Chủ nhân giỏi nhất trần đời luôn! Woof woof~ 🦴💖"
                                  : (_petType == "anime" ? "Oa!! Senpai hoàn thành xong rồi, giỏi quá đi mất~ 🎉 (≧◡≦) ♡"
-                                 : "Meo meo~ Tuyệt vời quá! Bạn đã hoàn thành công việc rồi nha! 💖");
+                                 : (_petType == "cyber" ? "Nhiệm vụ hoàn tất 100%! Overdrive kích hoạt thành công! Master đỉnh quá đi! 🚀⚡✨"
+                                 : "Meo meo~ Tuyệt vời quá! Bạn đã hoàn thành công việc rồi nha! 💖"));
                 _speechBubble.BorderBrush = new SolidColorBrush(Color.FromRgb(16, 185, 129));
 
                 DoubleAnimation jumpAnim = new DoubleAnimation { From = 0, To = -40, Duration = TimeSpan.FromMilliseconds(260), AutoReverse = true, RepeatBehavior = new RepeatBehavior(5), EasingFunction = new BounceEase { Bounces = 1, Bounciness = 2 } };
@@ -1730,9 +2424,8 @@ namespace NoteProDesktopPet
         {
             try
             {
-                string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                string p = System.IO.Path.Combine(appData, "com.example", "notepro", "NoteProData", "pet_debug.log");
-                System.IO.File.AppendAllText(p, DateTime.Now.ToString("HH:mm:ss.fff") + " " + msg + Environment.NewLine);
+                string logFile = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "pet_debug.log");
+                System.IO.File.AppendAllText(logFile, DateTime.Now.ToString("HH:mm:ss.fff") + " " + msg + Environment.NewLine);
             }
             catch { }
         }
@@ -1743,18 +2436,13 @@ namespace NoteProDesktopPet
             Log("=== DesktopPet starting ===");
             try
             {
-                AppDomain.CurrentDomain.UnhandledException += (s, e) =>
+                Process current = Process.GetCurrentProcess();
+                foreach (Process p in Process.GetProcessesByName("DesktopPet"))
                 {
-                    Log("AppDomain UnhandledException: " + (e.ExceptionObject != null ? e.ExceptionObject.ToString() : "null"));
-                };
-
-                bool createdNew;
-                _mutex = new System.Threading.Mutex(true, "NotePro_DesktopPet_SingleInstance_Mutex", out createdNew);
-                Log("Mutex createdNew: " + createdNew);
-                if (!createdNew)
-                {
-                    Log("Mutex already held, exiting.");
-                    return;
+                    if (p.Id != current.Id)
+                    {
+                        try { p.Kill(); } catch { }
+                    }
                 }
 
                 Application app = new Application();

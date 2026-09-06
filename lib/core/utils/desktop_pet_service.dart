@@ -35,7 +35,7 @@ class DesktopPetService {
   }
 
   Future<void> setPetType(String type) async {
-    if (type != 'dog' && type != 'cat' && type != 'anime' && type != 'reaper') return;
+    if (type != 'dog' && type != 'cat' && type != 'anime' && type != 'cyber' && type != 'reaper') return;
     _petType = type;
     try {
       final prefs = await SharedPreferences.getInstance();

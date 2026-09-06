@@ -10,7 +10,6 @@ import '../widgets/calendar_view.dart';
 import '../widgets/kanban_view.dart';
 import '../widgets/note_card_widget.dart';
 import '../widgets/search_filter_bar.dart';
-import '../widgets/wandering_pet_widget.dart';
 import 'note_editor_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -209,9 +208,6 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ],
               ),
-
-              // Floating wandering pet assistant when deadlines exist
-              const WanderingPetWidget(),
             ],
           ),
         ),

@@ -672,6 +672,22 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
                   contentPadding: EdgeInsets.zero,
                   title: const Row(
                     children: [
+                      Text('⚡ ', style: TextStyle(fontSize: 18)),
+                      Text('Bé Cyber Neko (Mecha Anime)', style: TextStyle(fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                  subtitle: const Text('Mũ tai mèo mecha, tóc trắng song bím'),
+                  value: 'cyber',
+                  groupValue: notesProvider.petType,
+                  onChanged: (val) {
+                    notesProvider.setPetType(val!);
+                    setDialogState(() {});
+                  },
+                ),
+                RadioListTile<String>(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Row(
+                    children: [
                       Text('💀 ', style: TextStyle(fontSize: 18)),
                       Text('Thần Chết Chibi (Grim Reaper)', style: TextStyle(fontWeight: FontWeight.w600)),
                     ],

@@ -47,6 +47,7 @@ class SystemTrayService with TrayListener, WindowListener {
               MenuItem(key: 'set_pet_dog', label: '🐶 Chú Cún Shiba (Puppy)'),
               MenuItem(key: 'set_pet_cat', label: '🐱 Bé Mèo Kawaii (Kitten)'),
               MenuItem(key: 'set_pet_anime', label: '🌸 Cô Bé Anime (Waifu)'),
+              MenuItem(key: 'set_pet_cyber', label: '⚡ Bé Cyber Neko (Mecha Anime)'),
               MenuItem(key: 'set_pet_reaper', label: '💀 Thần Chết (Grim Reaper)'),
             ],
           ),
@@ -106,6 +107,9 @@ class SystemTrayService with TrayListener, WindowListener {
         break;
       case 'set_pet_anime':
         await DesktopPetService.instance.setPetType('anime');
+        break;
+      case 'set_pet_cyber':
+        await DesktopPetService.instance.setPetType('cyber');
         break;
       case 'set_pet_reaper':
         await DesktopPetService.instance.setPetType('reaper');

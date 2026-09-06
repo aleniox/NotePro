@@ -1,10 +1,8 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
 import '../core/utils/desktop_pet_service.dart';
-import '../providers/notes_provider.dart';
 
 enum PetMood {
   happy,
@@ -99,6 +97,20 @@ class PetNotificationService {
           case PetMood.happy:
           default:
             return '🌸 Trợ Lý Anime (Waifu)';
+        }
+      case 'cyber':
+        switch (mood) {
+          case PetMood.celebrate:
+            return '⚡ Em Khen Master!';
+          case PetMood.trash:
+            return '🗑️ Đã Dọn Bộ Nhớ Cho Master!';
+          case PetMood.warning:
+            return '⚠️ Master Ơi Cảnh Báo!';
+          case PetMood.info:
+            return '💾 Đã Lưu Dữ Liệu Cho Master!';
+          case PetMood.happy:
+          default:
+            return '⚡ Bé Cyber Neko';
         }
       case 'reaper':
         switch (mood) {
@@ -493,6 +505,8 @@ class _PetNotificationOverlayState extends State<PetNotificationOverlay>
     switch (petType) {
       case 'anime':
         return _buildAnimeGirlAvatar(mood);
+      case 'cyber':
+        return _buildCyberGirlAvatar(mood);
       case 'reaper':
         return _buildReaperAvatar(mood);
       case 'cat':
@@ -900,7 +914,242 @@ class _PetNotificationOverlayState extends State<PetNotificationOverlay>
     );
   }
 
-  // 💀 4. Thần Chết Chibi (Grim Reaper)
+  // ⚡ 4. Bé Cyber Neko (Mecha Anime Chibi)
+  Widget _buildCyberGirlAvatar(PetMood mood) {
+    return Container(
+      width: 54,
+      height: 54,
+      decoration: BoxDecoration(
+        color: const Color(0xFF18181B), // Dark techwear hood base
+        shape: BoxShape.circle,
+        border: Border.all(color: const Color(0xFF00E5FF), width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF00E5FF).withValues(alpha: 0.45),
+            blurRadius: 10,
+            spreadRadius: 1,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Cyber Cat Ears with Neon Cyan Glow
+          Positioned(
+            top: -3,
+            left: 7,
+            child: _buildCyberCatEar(isLeft: true),
+          ),
+          Positioned(
+            top: -3,
+            right: 7,
+            child: _buildCyberCatEar(isLeft: false),
+          ),
+
+          // Cyber Headset Earpieces on sides
+          Positioned(
+            left: 0,
+            top: 18,
+            child: Container(
+              width: 5,
+              height: 14,
+              decoration: BoxDecoration(
+                color: const Color(0xFF0F172A),
+                borderRadius: BorderRadius.circular(3),
+                border: Border.all(color: const Color(0xFF00E5FF), width: 1),
+              ),
+            ),
+          ),
+          Positioned(
+            right: 0,
+            top: 18,
+            child: Container(
+              width: 5,
+              height: 14,
+              decoration: BoxDecoration(
+                color: const Color(0xFF0F172A),
+                borderRadius: BorderRadius.circular(3),
+                border: Border.all(color: const Color(0xFF00E5FF), width: 1),
+              ),
+            ),
+          ),
+
+          // Silver / Platinum Hair Bangs
+          Positioned(
+            top: 8,
+            child: Container(
+              width: 40,
+              height: 14,
+              decoration: const BoxDecoration(
+                color: Color(0xFFF1F5F9), // Silver/white bangs
+                borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(16),
+                  bottom: Radius.circular(6),
+                ),
+              ),
+            ),
+          ),
+
+          // Face Center Container
+          Positioned(
+            bottom: 4,
+            child: Container(
+              width: 36,
+              height: 24,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF5EE), // Chibi porcelain skin
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Eyes Row + Cyber Digital Tears
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 3,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF00E5FF),
+                          borderRadius: BorderRadius.circular(1.5),
+                        ),
+                      ),
+                      const SizedBox(width: 3),
+                      _buildCyberEye(mood),
+                      const SizedBox(width: 8),
+                      _buildCyberEye(mood),
+                      const SizedBox(width: 3),
+                      Container(
+                        width: 3,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF00E5FF),
+                          borderRadius: BorderRadius.circular(1.5),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  // Cute Chibi Smile / :3
+                  Container(
+                    width: 4,
+                    height: 2.5,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF0F172A),
+                      borderRadius: BorderRadius.vertical(bottom: Radius.circular(2)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Floating Orange Notification Badge ( 1 ) on upper right
+          Positioned(
+            top: -2,
+            right: -2,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 4.5, vertical: 1.5),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF97316),
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 1.2),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFF97316).withValues(alpha: 0.5),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
+              child: const Text(
+                '1',
+                style: TextStyle(
+                  fontSize: 8,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                  height: 1.0,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCyberCatEar({required bool isLeft}) {
+    return Transform.rotate(
+      angle: isLeft ? -0.28 : 0.28,
+      child: Container(
+        width: 12,
+        height: 12,
+        decoration: BoxDecoration(
+          color: const Color(0xFF18181B),
+          borderRadius: BorderRadius.circular(3),
+          border: Border.all(color: const Color(0xFF00E5FF), width: 1.2),
+        ),
+        child: Center(
+          child: Container(
+            width: 5,
+            height: 5,
+            decoration: const BoxDecoration(
+              color: Color(0xFF00E5FF),
+              shape: BoxShape.circle,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCyberEye(PetMood mood) {
+    if (mood == PetMood.celebrate || mood == PetMood.happy) {
+      return const Text(
+        '★',
+        style: TextStyle(
+          fontSize: 8,
+          color: Color(0xFF00E5FF),
+          fontWeight: FontWeight.bold,
+          height: 1.0,
+        ),
+      );
+    }
+    if (mood == PetMood.warning) {
+      return const Text(
+        '▲',
+        style: TextStyle(
+          fontSize: 7,
+          color: Color(0xFF00E5FF),
+          fontWeight: FontWeight.bold,
+          height: 1.0,
+        ),
+      );
+    }
+    return Container(
+      width: 6,
+      height: 6,
+      decoration: BoxDecoration(
+        color: const Color(0xFF0284C7),
+        shape: BoxShape.circle,
+        border: Border.all(color: const Color(0xFF00E5FF), width: 1),
+      ),
+      child: Center(
+        child: Container(
+          width: 2,
+          height: 2,
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.circle,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // 💀 5. Thần Chết Chibi (Grim Reaper)
   Widget _buildReaperAvatar(PetMood mood) {
     return Container(
       width: 54,
