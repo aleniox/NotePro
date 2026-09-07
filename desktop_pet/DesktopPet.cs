@@ -50,11 +50,16 @@ namespace NoteProDesktopPet
         // Selected Pet Type: "dog" | "cat" | "anime" | "cyber" | "reaper"
         private string _petType = "dog";
 
-        // Cyber idle sprite animation frames
+        // Cyber sprite animation frames
         private List<BitmapImage> _cyberIdleFrames = new List<BitmapImage>();
+        private List<BitmapImage> _cyberSpawnFrames = new List<BitmapImage>();
+        private List<BitmapImage> _cyberAttackFrames = new List<BitmapImage>();
+        private List<BitmapImage> _cyberDespawnFrames = new List<BitmapImage>();
         private DispatcherTimer _cyberAnimTimer;
+        private string _cyberAnimMode = "idle";
         private int _cyberCurrentFrame = 0;
         private Image _cyberImageControl;
+        private Action _cyberAnimCompleteCallback;
 
         // Smooth Dragging state
         private bool _isDragging = false;
@@ -175,8 +180,8 @@ namespace NoteProDesktopPet
             Background = Brushes.Transparent;
             Topmost = true;
             ShowInTaskbar = false;
-            Width = 320;
-            Height = 270;
+            Width = 300;
+            Height = 310;
 
             string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             string[] candidateDirs = new string[]
@@ -319,18 +324,25 @@ namespace NoteProDesktopPet
             _fxCanvas = new Canvas { IsHitTestVisible = false };
             mainGrid.Children.Add(_fxCanvas);
 
+            // Container stacking Speech Bubble on Top and Pet on Bottom
+            StackPanel layoutStack = new StackPanel
+            {
+                Orientation = Orientation.Vertical,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Bottom
+            };
+
             // Speech Bubble (Top)
             _speechBubble = new Border
             {
-                Width = 295,
+                Width = 260,
                 Background = new SolidColorBrush(Color.FromRgb(30, 41, 59)),
-                CornerRadius = new CornerRadius(16),
+                CornerRadius = new CornerRadius(14),
                 BorderBrush = new SolidColorBrush(Color.FromRgb(245, 158, 11)),
                 BorderThickness = new Thickness(2.0),
-                Padding = new Thickness(12, 10, 12, 10),
+                Padding = new Thickness(10, 7, 10, 7),
                 HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Top,
-                Margin = new Thickness(0, 0, 0, 10),
+                Margin = new Thickness(0, 0, 0, 6),
                 Effect = new System.Windows.Media.Effects.DropShadowEffect
                 {
                     Color = Colors.Black,
@@ -347,7 +359,7 @@ namespace NoteProDesktopPet
             _txtTitle = new TextBlock
             {
                 Text = "🐶 CÚN CON NHẮC DEADLINE",
-                FontSize = 11.5,
+                FontSize = 10.5,
                 FontWeight = FontWeights.Bold,
                 Foreground = new SolidColorBrush(Color.FromRgb(245, 158, 11))
             };
@@ -355,8 +367,8 @@ namespace NoteProDesktopPet
             {
                 Content = "✕",
                 FontSize = 10,
-                Width = 20,
-                Height = 20,
+                Width = 18,
+                Height = 18,
                 Background = Brushes.Transparent,
                 Foreground = Brushes.LightGray,
                 BorderThickness = new Thickness(0),
@@ -373,10 +385,10 @@ namespace NoteProDesktopPet
             _txtMessage = new TextBlock
             {
                 Text = "",
-                FontSize = 12,
+                FontSize = 11.2,
                 Foreground = Brushes.WhiteSmoke,
                 TextWrapping = TextWrapping.Wrap,
-                Margin = new Thickness(0, 4, 0, 4)
+                Margin = new Thickness(0, 3, 0, 3)
             };
             bubbleContent.Children.Add(_txtMessage);
 
@@ -384,14 +396,14 @@ namespace NoteProDesktopPet
             Border taskBox = new Border
             {
                 Background = new SolidColorBrush(Color.FromArgb(60, 255, 255, 255)),
-                CornerRadius = new CornerRadius(8),
-                Padding = new Thickness(8, 5, 8, 5),
-                Margin = new Thickness(0, 2, 0, 6)
+                CornerRadius = new CornerRadius(7),
+                Padding = new Thickness(7, 4, 7, 4),
+                Margin = new Thickness(0, 2, 0, 5)
             };
             _txtTask = new TextBlock
             {
                 Text = "Công việc sắp đến hạn",
-                FontSize = 12.5,
+                FontSize = 11.8,
                 FontWeight = FontWeights.SemiBold,
                 Foreground = new SolidColorBrush(Color.FromRgb(254, 240, 138)),
                 TextTrimming = TextTrimming.CharacterEllipsis
@@ -405,13 +417,13 @@ namespace NoteProDesktopPet
             _btnComplete = new Button
             {
                 Content = "✓ Hoàn thành!",
-                FontSize = 11,
+                FontSize = 10.2,
                 FontWeight = FontWeights.Bold,
                 Background = new SolidColorBrush(Color.FromRgb(16, 185, 129)),
                 Foreground = Brushes.White,
                 BorderThickness = new Thickness(0),
-                Padding = new Thickness(8, 4, 8, 4),
-                Margin = new Thickness(0, 0, 6, 0),
+                Padding = new Thickness(7, 3, 7, 3),
+                Margin = new Thickness(0, 0, 5, 0),
                 Cursor = Cursors.Hand
             };
             _btnComplete.Click += (s, e) => MarkTaskCompleted();
@@ -419,12 +431,12 @@ namespace NoteProDesktopPet
             _btnSwitchPet = new Button
             {
                 Content = "🐾 Đổi Pet",
-                FontSize = 11,
+                FontSize = 10.2,
                 Background = new SolidColorBrush(Color.FromRgb(79, 70, 229)), // Indigo
                 Foreground = Brushes.White,
                 BorderThickness = new Thickness(0),
-                Padding = new Thickness(8, 4, 8, 4),
-                Margin = new Thickness(0, 0, 6, 0),
+                Padding = new Thickness(7, 3, 7, 3),
+                Margin = new Thickness(0, 0, 5, 0),
                 Cursor = Cursors.Hand
             };
             _btnSwitchPet.Click += (s, e) => CyclePetType();
@@ -432,11 +444,11 @@ namespace NoteProDesktopPet
             Button btnOpenApp = new Button
             {
                 Content = "Mở App",
-                FontSize = 11,
+                FontSize = 10.2,
                 Background = new SolidColorBrush(Color.FromArgb(80, 255, 255, 255)),
                 Foreground = Brushes.White,
                 BorderThickness = new Thickness(0),
-                Padding = new Thickness(8, 4, 8, 4),
+                Padding = new Thickness(7, 3, 7, 3),
                 Cursor = Cursors.Hand
             };
             btnOpenApp.Click += (s, e) => OpenNoteProApp();
@@ -447,15 +459,14 @@ namespace NoteProDesktopPet
             bubbleContent.Children.Add(btnRow);
 
             _speechBubble.Child = bubbleContent;
-            mainGrid.Children.Add(_speechBubble);
+            layoutStack.Children.Add(_speechBubble);
 
-            // Pet Root
+            // Pet Root (Below the Speech Bubble)
             _petRoot = new Grid
             {
-                Width = 114,
-                Height = 108,
+                Width = 130,
+                Height = 150,
                 HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Bottom,
                 Cursor = Cursors.SizeAll,
                 RenderTransformOrigin = new Point(0.5, 0.85)
             };
@@ -469,7 +480,8 @@ namespace NoteProDesktopPet
             tg.Children.Add(_tiltTransform);
             _petRoot.RenderTransform = tg;
 
-            mainGrid.Children.Add(_petRoot);
+            layoutStack.Children.Add(_petRoot);
+            mainGrid.Children.Add(layoutStack);
             Content = mainGrid;
         }
 
@@ -930,34 +942,34 @@ namespace NoteProDesktopPet
             return eyeBox;
         }
 
-        private void LoadCyberIdleFrames()
+        private List<BitmapImage> LoadFramesFromSubdir(string subDirName, string prefix, int maxFrames = 100)
         {
-            if (_cyberIdleFrames.Count > 0) return;
+            List<BitmapImage> list = new List<BitmapImage>();
             string[] candidateFolders = new string[]
             {
-                System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ide"),
-                System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "desktop_pet", "ide"),
-                "f:\\NotePro\\desktop_pet\\ide",
-                "f:\\NotePro\\ide",
-                System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "com.notepro.app", "notepro", "desktop_pet", "ide"),
-                System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "NoteProData", "ide")
+                System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, subDirName),
+                System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "desktop_pet", subDirName),
+                "f:\\NotePro\\desktop_pet\\" + subDirName,
+                "f:\\NotePro\\" + subDirName,
+                System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "com.notepro.app", "notepro", "desktop_pet", subDirName),
+                System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "NoteProData", subDirName)
             };
 
-            string ideDir = null;
+            string targetDir = null;
             foreach (string dir in candidateFolders)
             {
                 if (System.IO.Directory.Exists(dir))
                 {
-                    ideDir = dir;
+                    targetDir = dir;
                     break;
                 }
             }
 
-            if (ideDir != null)
+            if (targetDir != null)
             {
-                for (int i = 1; i <= 30; i++)
+                for (int i = 1; i <= maxFrames; i++)
                 {
-                    string pngPath = System.IO.Path.Combine(ideDir, string.Format("idle_{0}.png", i));
+                    string pngPath = System.IO.Path.Combine(targetDir, string.Format("{0}_{1}.png", prefix, i));
                     if (System.IO.File.Exists(pngPath))
                     {
                         try
@@ -968,88 +980,142 @@ namespace NoteProDesktopPet
                             bi.UriSource = new Uri(pngPath, UriKind.Absolute);
                             bi.EndInit();
                             bi.Freeze();
-                            _cyberIdleFrames.Add(bi);
+                            list.Add(bi);
                         }
                         catch { }
                     }
                 }
             }
+            return list;
         }
 
-        private void StartCyberAnimation()
+        private void LoadAllCyberFrames()
         {
+            if (_cyberIdleFrames.Count == 0)
+                _cyberIdleFrames = LoadFramesFromSubdir("ide", "idle", 30);
+            if (_cyberSpawnFrames.Count == 0)
+                _cyberSpawnFrames = LoadFramesFromSubdir("Spawn", "spawn", 100);
+            if (_cyberAttackFrames.Count == 0)
+                _cyberAttackFrames = LoadFramesFromSubdir("attack", "attack", 100);
+            if (_cyberDespawnFrames.Count == 0)
+                _cyberDespawnFrames = LoadFramesFromSubdir("Despawn", "despawn", 100);
+        }
+
+        private void PlayCyberAnimation(string mode, Action onComplete = null)
+        {
+            LoadAllCyberFrames();
+            _cyberAnimMode = mode;
+            _cyberCurrentFrame = 0;
+            _cyberAnimCompleteCallback = onComplete;
+
             if (_cyberAnimTimer == null)
             {
-                _cyberAnimTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(130) };
-                _cyberAnimTimer.Tick += (s, e) =>
-                {
-                    if (_petType == "cyber" && _cyberImageControl != null && _cyberIdleFrames.Count > 0)
-                    {
-                        _cyberCurrentFrame = (_cyberCurrentFrame + 1) % _cyberIdleFrames.Count;
-                        _cyberImageControl.Source = _cyberIdleFrames[_cyberCurrentFrame];
-                    }
-                };
+                _cyberAnimTimer = new DispatcherTimer();
+                _cyberAnimTimer.Tick += OnCyberAnimTick;
             }
+
+            int intervalMs = 50; // 20 fps for video sequences
+            if (mode == "idle") intervalMs = 130; // Breathing idle tempo
+
+            _cyberAnimTimer.Interval = TimeSpan.FromMilliseconds(intervalMs);
             _cyberAnimTimer.Start();
+        }
+
+        private void OnCyberAnimTick(object sender, EventArgs e)
+        {
+            if (_petType != "cyber" || _cyberImageControl == null) return;
+
+            List<BitmapImage> currentFrames = _cyberIdleFrames;
+            if (_cyberAnimMode == "spawn") currentFrames = _cyberSpawnFrames;
+            else if (_cyberAnimMode == "attack") currentFrames = _cyberAttackFrames;
+            else if (_cyberAnimMode == "despawn") currentFrames = _cyberDespawnFrames;
+
+            if (currentFrames == null || currentFrames.Count == 0)
+            {
+                currentFrames = _cyberIdleFrames;
+                if (currentFrames.Count == 0) return;
+            }
+
+            _cyberCurrentFrame++;
+            if (_cyberCurrentFrame >= currentFrames.Count)
+            {
+                if (_cyberAnimMode == "idle")
+                {
+                    _cyberCurrentFrame = 0;
+                }
+                else
+                {
+                    Action cb = _cyberAnimCompleteCallback;
+                    _cyberAnimCompleteCallback = null;
+
+                    if (_cyberAnimMode == "spawn")
+                    {
+                        PlayCyberAnimation("idle");
+                        return;
+                    }
+                    else if (_cyberAnimMode == "attack")
+                    {
+                        if (cb != null) cb();
+                        else PlayCyberAnimation("idle");
+                        return;
+                    }
+                    else if (_cyberAnimMode == "despawn")
+                    {
+                        if (cb != null) cb();
+                        else Close();
+                        return;
+                    }
+                }
+            }
+
+            if (_cyberCurrentFrame < currentFrames.Count)
+            {
+                _cyberImageControl.Source = currentFrames[_cyberCurrentFrame];
+
+                if (_cyberAnimMode == "attack" && (_cyberCurrentFrame == 35 || _cyberCurrentFrame == 45))
+                {
+                    SpawnParticle(160, 150);
+                }
+            }
         }
 
         // ==================== 4. CYBER ANIME NEKO (BÉ MECHA WAIFU) ====================
         private void DrawCyberGirlGraphic(Grid root)
         {
-            LoadCyberIdleFrames();
-            if (_cyberIdleFrames.Count > 0)
+            LoadAllCyberFrames();
+            if (_cyberIdleFrames.Count > 0 || _cyberSpawnFrames.Count > 0)
             {
                 Grid cyberContainer = new Grid
                 {
-                    Width = 120,
-                    Height = 120,
-                    Margin = new Thickness(0, 8, 0, 0),
+                    Width = 125,
+                    Height = 160,
+                    Margin = new Thickness(0, 0, 0, 0),
                     HorizontalAlignment = HorizontalAlignment.Center,
-                    VerticalAlignment = VerticalAlignment.Top,
+                    VerticalAlignment = VerticalAlignment.Bottom,
                     RenderTransformOrigin = new Point(0.5, 0.9)
                 };
                 _bodyBreatheTransform = new ScaleTransform(1.0, 1.0);
                 cyberContainer.RenderTransform = _bodyBreatheTransform;
 
+                BitmapImage initialImg = _cyberSpawnFrames.Count > 0 ? _cyberSpawnFrames[0] : _cyberIdleFrames[0];
                 _cyberImageControl = new Image
                 {
-                    Source = _cyberIdleFrames[0],
-                    Width = 120,
-                    Height = 120,
+                    Source = initialImg,
+                    Width = 125,
+                    Height = 160,
                     Stretch = Stretch.Uniform
                 };
                 RenderOptions.SetBitmapScalingMode(_cyberImageControl, BitmapScalingMode.NearestNeighbor);
                 cyberContainer.Children.Add(_cyberImageControl);
 
-                // Floating Notification Badge (Orange Circle with "1")
-                Border spriteNotifBadge = new Border
-                {
-                    Width = 18,
-                    Height = 18,
-                    CornerRadius = new CornerRadius(9),
-                    Background = new LinearGradientBrush(Color.FromRgb(249, 115, 22), Color.FromRgb(234, 88, 12), new Point(0, 0), new Point(1, 1)),
-                    BorderBrush = Brushes.White,
-                    BorderThickness = new Thickness(1.2),
-                    Margin = new Thickness(0, 6, 8, 0),
-                    HorizontalAlignment = HorizontalAlignment.Right,
-                    VerticalAlignment = VerticalAlignment.Top,
-                    Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Color.FromRgb(234, 88, 12), BlurRadius = 6, Opacity = 0.6, ShadowDepth = 2 }
-                };
-                spriteNotifBadge.Child = new TextBlock
-                {
-                    Text = "1",
-                    FontSize = 10,
-                    FontWeight = FontWeights.ExtraBold,
-                    Foreground = Brushes.White,
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    VerticalAlignment = VerticalAlignment.Center,
-                    Margin = new Thickness(0, -1, 0, 0)
-                };
-                cyberContainer.Children.Add(spriteNotifBadge);
-
                 root.Children.Add(cyberContainer);
                 AddFXElements(root);
-                StartCyberAnimation();
+
+                if (_cyberSpawnFrames.Count > 0)
+                    PlayCyberAnimation("spawn");
+                else
+                    PlayCyberAnimation("idle");
+
                 return;
             }
 
@@ -1735,13 +1801,14 @@ namespace NoteProDesktopPet
 
             root.Children.Add(reaperBody);
 
-            // 2. Magnificent Death Scythe (Cây Lưỡi Hái Tử Thần Hiên Ngang Quét Qua Đầu)
+            // 2. Magnificent Death Scythe (Cây Lưỡi Hái Tử Thần Vươn Cao Quét Qua Đầu)
             Grid scytheGrid = new Grid
             {
                 Width = 114,
-                Height = 108,
+                Height = 118,
+                Margin = new Thickness(0, 0, 0, 8),
                 HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Top,
                 RenderTransformOrigin = new Point(0.72, 0.58)
             };
             _scytheRotate = new RotateTransform(0);
@@ -2230,14 +2297,18 @@ namespace NoteProDesktopPet
                     PlayGrimReaperCompletionAnimation();
                     return;
                 }
+                if (_petType == "cyber")
+                {
+                    PlayCyberSlashCompletionAnimation();
+                    return;
+                }
 
                 _isCelebrating = true;
                 _txtTitle.Text = "🎉 THÀNH CÔNG VƯỢT DEADLINE!";
                 _txtTitle.Foreground = new SolidColorBrush(Color.FromRgb(16, 185, 129));
                 _txtMessage.Text = _petType == "dog" ? "Gâu gâu gâu!! 🎉 Chủ nhân giỏi nhất trần đời luôn! Woof woof~ 🦴💖"
                                  : (_petType == "anime" ? "Oa!! Senpai hoàn thành xong rồi, giỏi quá đi mất~ 🎉 (≧◡≦) ♡"
-                                 : (_petType == "cyber" ? "Nhiệm vụ hoàn tất 100%! Overdrive kích hoạt thành công! Master đỉnh quá đi! 🚀⚡✨"
-                                 : "Meo meo~ Tuyệt vời quá! Bạn đã hoàn thành công việc rồi nha! 💖"));
+                                 : "Meo meo~ Tuyệt vời quá! Bạn đã hoàn thành công việc rồi nha! 💖");
                 _speechBubble.BorderBrush = new SolidColorBrush(Color.FromRgb(16, 185, 129));
 
                 DoubleAnimation jumpAnim = new DoubleAnimation { From = 0, To = -40, Duration = TimeSpan.FromMilliseconds(260), AutoReverse = true, RepeatBehavior = new RepeatBehavior(5), EasingFunction = new BounceEase { Bounces = 1, Bounciness = 2 } };
@@ -2270,6 +2341,41 @@ namespace NoteProDesktopPet
             {
                 MessageBox.Show(ex.Message);
             }
+        }
+
+        private void PlayCyberSlashCompletionAnimation()
+        {
+            _isCelebrating = true;
+            _txtTitle.Text = "⚔️ CHÉM TAN DEADLINE!";
+            _txtTitle.Foreground = new SolidColorBrush(Color.FromRgb(6, 182, 212));
+            _txtMessage.Text = "Nhiệm vụ bị trảm sạch sẽ 100%! Master đỉnh quá đi! 🚀⚡✨";
+            _speechBubble.BorderBrush = new SolidColorBrush(Color.FromRgb(6, 182, 212));
+
+            // Write action file to complete
+            try
+            {
+                string noteId = _currentDeadline != null ? _currentDeadline.id : "";
+                string actionJson = "{\"action\":\"complete\",\"noteId\":\"" + noteId + "\",\"timestamp\":\"" + DateTime.Now.ToString("o") + "\"}";
+                File.WriteAllText(_actionPath, actionJson);
+            }
+            catch { }
+
+            // Play Attack (Sword Slash) Animation
+            PlayCyberAnimation("attack", () =>
+            {
+                // After sword slash completes, celebrate for 1.2s then Despawn into portal
+                DispatcherTimer waitTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1200) };
+                waitTimer.Tick += (s2, e2) =>
+                {
+                    waitTimer.Stop();
+                    _txtMessage.Text = "Cổng không gian kích hoạt... Hẹn gặp lại Master nhé! 💙⚡";
+                    PlayCyberAnimation("despawn", () =>
+                    {
+                        Close();
+                    });
+                };
+                waitTimer.Start();
+            });
         }
 
         private void PlayGrimReaperCompletionAnimation()
